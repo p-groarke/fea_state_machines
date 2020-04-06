@@ -161,4 +161,87 @@ TEST(simple_fsm, example) {
 	EXPECT_EQ(mtest_data.num_onexit_calls, 1u);
 	EXPECT_EQ(mtest_data.num_onexitto_calls, 2u);
 }
+
+TEST(simpl_fsm, basics) {
+	enum class state {
+		walk,
+		run,
+		jump,
+		count,
+	};
+
+	enum class transition {
+		do_walk,
+		do_run,
+		do_jump,
+		count,
+	};
+
+	size_t on_enters = 0;
+	size_t on_updates = 0;
+	size_t on_exits = 0;
+	bool inpute = false;
+
+	fea::fsm<transition, state, bool&> machine;
+
+	fea::fsm_state<transition, state, bool&> walk_state;
+	walk_state.add_event<fea::fsm_event::on_enter>([&](auto&, bool& b) {
+		b = true;
+		++on_enters;
+	});
+	walk_state.add_event<fea::fsm_event::on_update>([&](auto&, bool& b) {
+		b = true;
+		++on_updates;
+		machine.trigger<transition::do_run>(b);
+	});
+	walk_state.add_event<fea::fsm_event::on_exit>([&](auto&, bool& b) {
+		b = true;
+		++on_exits;
+	});
+	walk_state.add_transition<transition::do_run, state::run>();
+	machine.add_state<state::walk>(std::move(walk_state));
+
+	fea::fsm_state<transition, state, bool&> run_state;
+	run_state.add_event<fea::fsm_event::on_enter>([&](auto&, bool& b) {
+		b = true;
+		++on_enters;
+	});
+	run_state.add_event<fea::fsm_event::on_update>([&](auto&, bool& b) {
+		b = true;
+		++on_updates;
+		machine.trigger<transition::do_jump>(b);
+	});
+	run_state.add_event<fea::fsm_event::on_exit>([&](auto&, bool& b) {
+		b = true;
+		++on_exits;
+	});
+	run_state.add_transition<transition::do_jump, state::run>();
+	machine.add_state<state::run>(std::move(run_state));
+
+	fea::fsm_state<transition, state, bool&> jump_state;
+	jump_state.add_event<fea::fsm_event::on_enter>([&](auto&, bool& b) {
+		b = true;
+		++on_enters;
+	});
+	jump_state.add_event<fea::fsm_event::on_update>([&](auto&, bool& b) {
+		b = true;
+		++on_updates;
+		machine.trigger<transition::do_walk>(b);
+	});
+	jump_state.add_event<fea::fsm_event::on_exit>([&](auto&, bool& b) {
+		b = true;
+		++on_exits;
+	});
+	jump_state.add_transition<transition::do_walk, state::walk>();
+	machine.add_state<state::jump>(std::move(jump_state));
+
+	machine.update(inpute);
+	machine.update(inpute);
+	machine.update(inpute);
+
+	EXPECT_TRUE(inpute);
+	EXPECT_EQ(on_enters, 4);
+	EXPECT_EQ(on_updates, 3);
+	EXPECT_EQ(on_exits, 3);
+}
 } // namespace
