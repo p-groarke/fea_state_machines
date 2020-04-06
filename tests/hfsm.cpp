@@ -1,5 +1,5 @@
 ﻿#include <cstdio>
-#include <fea_state_machines/fea_hfsm.hpp>
+#include <fea_state_machines/hfsm.hpp>
 #include <gtest/gtest.h>
 
 namespace {
@@ -432,7 +432,7 @@ TEST(hfsm, basics) {
 
 	state_machine_ready = true; // for tests
 	smachine.add_transition_names(transition_names);
-	smachine.enable_print();
+	// smachine.enable_print();
 	smachine.update();
 	smachine.update();
 	do_something = true;
@@ -511,7 +511,7 @@ TEST(hfsm, parallel) {
 
 	smachine.add_parallel_hfsm(std::move(smachine2));
 
-	smachine.enable_print();
+	// smachine.enable_print();
 	smachine.update();
 	smachine.update();
 	smachine.update();
@@ -654,7 +654,7 @@ TEST(hfsm, history_transition_guards) {
 	smachine.add_state<state::run>(std::move(run_state));
 	smachine.add_state<state::jump>(std::move(jump_state));
 
-	smachine.enable_print();
+	// smachine.enable_print();
 	smachine.update();
 
 	EXPECT_EQ(enters, 1);

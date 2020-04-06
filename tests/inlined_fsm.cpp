@@ -1,4 +1,4 @@
-﻿//#include <fea_state_machines/fea_simple_inlined_fsm.hpp>
+﻿//#include <fea_state_machines/inlined_fsm.hpp>
 //#include <gtest/gtest.h>
 //
 // namespace fea {

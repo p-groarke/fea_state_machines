@@ -1,11 +1,11 @@
-#include <gtest/gtest.h>
+﻿#include <gtest/gtest.h>
 
 
-#if defined(NDEBUG)
+//#if defined(NDEBUG)
 
 namespace {
-TEST(simple_state_machine, benchmarks) {
+TEST(simple_fsm, benchmarks) {
 }
 } // namespace
 
-#endif // NDEBUG
+//#endif // NDEBUG

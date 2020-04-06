@@ -1,4 +1,4 @@
-﻿#include <fea_state_machines/fea_simple_fsm.hpp>
+﻿#include <fea_state_machines/fsm.hpp>
 #include <gtest/gtest.h>
 
 
@@ -243,5 +243,101 @@ TEST(simpl_fsm, basics) {
 	EXPECT_EQ(on_enters, 4);
 	EXPECT_EQ(on_updates, 3);
 	EXPECT_EQ(on_exits, 3);
+}
+
+TEST(simple_fsm, event_triggering) {
+	struct test_data {
+		size_t num_onenterfrom_calls = 0;
+		size_t num_onenter_calls = 0;
+		size_t num_onupdate_calls = 0;
+		size_t num_onexit_calls = 0;
+		size_t num_onexitto_calls = 0;
+	};
+	test_data mtest_data;
+
+	// Create your enums. They MUST end with 'count'.
+	enum class state { walk, run, jump, count };
+	enum class transition { do_walk, do_run, do_jump, count };
+
+	// Used for callbacks
+	using machine_t = fea::fsm<transition, state, test_data&>;
+
+	// Create your state machine.
+	fea::fsm<transition, state, test_data&> machine;
+
+	// Create your states.
+	// Walk
+	{
+		fea::fsm_state<transition, state, test_data&> walk_state;
+
+		// Add allowed transitions.
+		walk_state.add_transition<transition::do_run, state::run>();
+		walk_state.add_transition<transition::do_jump, state::jump>();
+
+		// Add state events.
+		walk_state.add_event<fea::fsm_event::on_enter>(
+				[](machine_t& machine, test_data& t) {
+					++t.num_onenter_calls;
+					machine.trigger<transition::do_run>(t);
+				});
+		walk_state.add_event<fea::fsm_event::on_enter_from, state::run>(
+				[](machine_t&, test_data& t) {
+					++t.num_onenterfrom_calls;
+					// Should finish here.
+					// machine.trigger<transition::do_jump>(t);
+				});
+		walk_state.add_event<fea::fsm_event::on_exit_to, state::run>(
+				[](machine_t& machine, test_data& t) {
+					++t.num_onexitto_calls;
+					machine.trigger<transition::do_jump>(t);
+				});
+		machine.add_state<state::walk>(std::move(walk_state));
+	}
+
+	// Run
+	{
+		fea::fsm_state<transition, state, test_data&> run_state;
+		run_state.add_transition<transition::do_walk, state::walk>();
+		run_state.add_transition<transition::do_jump, state::jump>();
+		run_state.add_event<fea::fsm_event::on_enter_from, state::jump>(
+				[](machine_t& machine, test_data& t) {
+					++t.num_onenterfrom_calls;
+					machine.trigger<transition::do_jump>(t);
+				});
+		run_state.add_event<fea::fsm_event::on_exit_to, state::jump>(
+				[](machine_t& machine, test_data& t) {
+					++t.num_onexitto_calls;
+					machine.trigger<transition::do_walk>(t);
+				});
+		machine.add_state<state::run>(std::move(run_state));
+	}
+
+	// Jump
+	{
+		fea::fsm_state<transition, state, test_data&> jump_state;
+		jump_state.add_transition<transition::do_walk, state::walk>();
+		jump_state.add_transition<transition::do_run, state::run>();
+
+		jump_state.add_event<fea::fsm_event::on_enter_from, state::walk>(
+				[](machine_t& m, test_data& t) {
+					++t.num_onenterfrom_calls;
+					m.trigger<transition::do_run>(t);
+				});
+
+		jump_state.add_event<fea::fsm_event::on_exit_to, state::run>(
+				[](machine_t& m, test_data& t) {
+					++t.num_onexitto_calls;
+					m.trigger<transition::do_run>(t);
+				});
+
+		machine.add_state<state::jump>(std::move(jump_state));
+	}
+
+	machine.update(mtest_data);
+	EXPECT_EQ(mtest_data.num_onenterfrom_calls, 3u);
+	EXPECT_EQ(mtest_data.num_onenter_calls, 1u);
+	EXPECT_EQ(mtest_data.num_onupdate_calls, 0u);
+	EXPECT_EQ(mtest_data.num_onexit_calls, 0u);
+	EXPECT_EQ(mtest_data.num_onexitto_calls, 3u);
 }
 } // namespace
