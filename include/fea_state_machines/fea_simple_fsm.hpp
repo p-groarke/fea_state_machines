@@ -150,6 +150,7 @@ struct fsm_state {
 		}
 	}
 
+private:
 	std::array<StateEnum, size_t(TransitionEnum::count)> _transitions;
 	fsm_func_t _on_enter_func;
 	fsm_func_t _on_update_func;

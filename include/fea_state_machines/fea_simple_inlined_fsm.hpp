@@ -52,22 +52,6 @@ Notes :
 		debugging much faster and easier.
 */
 
-namespace detail {
-template <size_t, class T>
-using T_ = T;
-
-template <size_t... Is>
-auto make_empty_func_tuple_impl(std::index_sequence<Is...>) {
-	return std::tuple<T_<Is, int>...>{};
-}
-
-template <size_t N>
-auto make_empty_func_tuple() {
-	return make_empty_func_tuple_impl(std::make_index_sequence<N>{});
-}
-
-auto empty_lambda = []() {};
-} // namespace detail
 
 enum class fsm_event : uint8_t {
 	on_enter_from,
@@ -78,12 +62,23 @@ enum class fsm_event : uint8_t {
 	count,
 };
 
+namespace detail {} // namespace detail
+
 template <class, class, class...>
 struct fsm;
 
-template <class TransitionEnum, class StateEnum, class OnEnterFunc,
-		class OnUpdateFunc, class OnExitFunc>
-//, class OnEnterFromTup,class OnExitToTup>
+template <fsm_event Event, size_t FromToStateIdx, class Func>
+struct fsm_event_func {
+	Func func;
+};
+
+template <fsm_event Event,
+		size_t FromToStateIdx = std::numeric_limits<size_t>::max(), class Func>
+constexpr auto make_event(Func func) {
+	return fsm_event_func<Event, FromToStateIdx, Func>{ func };
+}
+
+template <class TransitionEnum, class StateEnum, class... EventFuncs>
 struct fsm_state {
 	// static_assert(std::tuple_size_v<OnEnterFromTup> ==
 	// size_t(StateEnum::count), 		"fsm_state : on_enter_from function
@@ -95,19 +90,7 @@ struct fsm_state {
 	// using fsm_t = fsm<TransitionEnum, StateEnum>;
 	// using fsm_func_t = decltype(void(fsm_t&, FuncArgs...));
 
-	// You must provide your events in the ctor.
-	// Use empty lambdas for events you do not use.
-	fsm_state(OnEnterFunc on_enter_func, OnUpdateFunc on_update_func,
-			OnExitFunc on_exit_func)
-			// OnEnterFromTup on_enter_from_funcs
-			//= detail::make_empty_func_tuple<size_t(StateEnum::count)>(),
-			// OnExitToTup on_exit_to_funcs
-			//= detail::make_empty_func_tuple<size_t(StateEnum::count)>())
-			: _on_enter_func(on_enter_func)
-			, _on_update_func(on_update_func)
-			, _on_exit_func(on_exit_func) {
-		//, _on_enter_from_funcs(on_enter_from_funcs)
-		//, _on_exit_to_funcs(on_exit_to_funcs) {
+	fsm_state(EventFuncs... event_funcs) {
 
 		std::fill(_transitions.begin(), _transitions.end(), StateEnum::count);
 	}
@@ -194,7 +177,15 @@ struct fsm_state {
 	//	}
 	//}
 
+private:
+	template <fsm_event Event, StateEnum FromToState = StateEnum::count>
+	struct func_key {
+		static constexpr size_t func_idx;
+	};
+
 	std::array<StateEnum, size_t(TransitionEnum::count)> _transitions;
+	std::tuple<> _event_funcs;
+
 	OnEnterFunc _on_enter_func;
 	OnUpdateFunc _on_update_func;
 	OnExitFunc _on_exit_func;
