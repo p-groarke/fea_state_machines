@@ -44,6 +44,12 @@ Notes :
 		(by providing empty callbacks). IMHO this is one of the bigest source of
 		bugs and broken behavior when working with FSMs. Throwing makes
 		debugging much faster and easier.
+
+TODO :
+	- Yield/History state
+	- Anonymous transition (1 runtime transition per state).
+	- Auto transition guards?
+	- Guard transitions maybe?
 */
 
 enum class fsm_event : uint8_t {

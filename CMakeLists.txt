@@ -89,7 +89,7 @@ if (${BUILD_TESTING})
 	elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
 		# using Intel C++
 	elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-		target_compile_options(${TEST_NAME} PRIVATE /W4 /WX /EHsc /Zc:__cplusplus /FAs /permissive-)
+		target_compile_options(${TEST_NAME} PRIVATE /W4 /WX /EHsc /Zc:__cplusplus /FAs /permissive- /bigobj)
 		target_compile_definitions(${TEST_NAME} PRIVATE NOMINMAX)
 		set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ${TEST_NAME})
 	endif()

@@ -4,13 +4,12 @@
 #include <cassert>
 #include <cstdint>
 #include <functional>
+#include <limits>
 #include <tuple>
+
 #if !defined(FEA_FSM_NOTHROW)
 #include <stdexcept>
 #endif
-
-namespace fea {
-namespace inl {
 
 /*
 [Almost] the smallest and simplest fea fsm.
@@ -53,6 +52,81 @@ Notes :
 */
 
 
+namespace fea {
+namespace inl {
+namespace detail {
+template <class T, class Tuple>
+struct tuple_idx {
+	static_assert(!std::is_same_v<Tuple, std::tuple<>>,
+			"could not find T in given Tuple");
+};
+
+template <class T, class... Types>
+struct tuple_idx<T, std::tuple<T, Types...>> {
+	static constexpr size_t value = 0;
+};
+
+template <class T, class U, class... Types>
+struct tuple_idx<T, std::tuple<U, Types...>> {
+	static constexpr size_t value
+			= 1 + tuple_idx<T, std::tuple<Types...>>::value;
+};
+
+template <class T, class Tuple>
+inline constexpr size_t tuple_idx_v = tuple_idx<T, Tuple>::value;
+
+//// Used to identify an element by type.
+// template <class... Keys>
+// struct tuple_map_key {};
+
+// A ordered compile time map container.
+// You can search for elements using compile time types.
+
+// Pass in your tuple_map_key type.
+// Build with multiple tuple<tuple_map_key<Key>, T>...
+template <class KeysTuple, class ValuesTuple>
+struct tuple_map {
+	tuple_map(KeysTuple keys, ValuesTuple values)
+			: _keys(keys)
+			, _values(values) {
+	}
+
+	// Search by non-type template.
+	template <class Key>
+	constexpr const auto& find() const {
+		constexpr size_t idx = tuple_idx_v<Key, KeysTuple>;
+		return std::get<idx>(_values);
+	}
+	template <class Key>
+	constexpr auto& find() {
+		constexpr size_t idx = tuple_idx_v<Key, KeysTuple>;
+		return std::get<idx>(_values);
+	}
+
+private:
+	// tuple<tuple_map_key<my, type, keys>>
+	KeysTuple _keys;
+
+	// tuple<T>
+	ValuesTuple _values;
+};
+
+template <class... KeyValues>
+constexpr auto make_tuple_map(std::tuple<KeyValues...> tup) {
+	auto tup_of_tup = std::apply(
+			[&](auto... key_vals) {
+				auto keys = std::tuple{ std::get<0>(key_vals)... };
+				auto vals = std::tuple{ (std::get<1>(key_vals), ...) };
+				return std::tuple{ keys, vals };
+			},
+			tup);
+
+	return tuple_map{ std::get<0>(tup_of_tup), std::get<1>(tup_of_tup) };
+}
+
+} // namespace detail
+
+
 enum class fsm_event : uint8_t {
 	on_enter_from,
 	on_enter,
@@ -62,281 +136,83 @@ enum class fsm_event : uint8_t {
 	count,
 };
 
-namespace detail {} // namespace detail
-
 template <class, class, class...>
 struct fsm;
 
-template <fsm_event Event, size_t FromToStateIdx, class Func>
-struct fsm_event_func {
-	Func func;
-};
+// Fsm keys are used to lookup your transitions and your states.
 
-template <fsm_event Event,
-		size_t FromToStateIdx = std::numeric_limits<size_t>::max(), class Func>
-constexpr auto make_event(Func func) {
-	return fsm_event_func<Event, FromToStateIdx, Func>{ func };
-}
+// Transition Key will query tuple map with Transition to get the target
+// state.
+template <class TransitionEnum, TransitionEnum FromTransition>
+struct fsm_transition_key {};
 
-template <class TransitionEnum, class StateEnum, class... EventFuncs>
+// Event key will query the tuple map with Event and possibly a To/From
+// state to execute your event.
+template <fsm_event Event, class StateEnum, StateEnum FromToStateIdx>
+struct fsm_event_key {};
+
+template <class TransitionEnum, class StateEnum, class TransitionMap,
+		class EventMap>
 struct fsm_state {
-	// static_assert(std::tuple_size_v<OnEnterFromTup> ==
-	// size_t(StateEnum::count), 		"fsm_state : on_enter_from function
-	// tuple size must match " 		"StateEnum::count");
-	// static_assert(std::tuple_size_v<OnExitToTup> == size_t(StateEnum::count),
-	//		"fsm_state : on_exit_to function tuple size must match "
-	//		"StateEnum::count");
+	// using builder_t = typename fsm_builder<TransitionEnum, StateEnum>;
 
-	// using fsm_t = fsm<TransitionEnum, StateEnum>;
-	// using fsm_func_t = decltype(void(fsm_t&, FuncArgs...));
+	// template <TransitionEnum Trans>
+	// using t_key = typename builder_t::transition_key<Trans>;
 
-	fsm_state(EventFuncs... event_funcs) {
+	// template <fsm_event E, StateEnum S>
+	// using event_key = typename builder_t::event_key<E, S>;
 
-		std::fill(_transitions.begin(), _transitions.end(), StateEnum::count);
+	constexpr fsm_state(TransitionMap transition_map, EventMap event_map)
+			: _transitions(transition_map)
+			, _events(event_map) {
 	}
 
-	// Add your event implementation.
-	// template <fsm_event Event, StateEnum State = StateEnum::count>
-	// void add_event(fsm_func_t&& func) {
-	//	if constexpr (Event == fsm_event::on_enter_from) {
-	//		std::get<size_t(State)>(_on_enter_from_funcs) = std::move(func);
-	//	} else if constexpr (Event == fsm_event::on_exit_to) {
-	//		std::get<size_t(State)>(_on_exit_to_funcs) = std::move(func);
-	//	} else if constexpr (Event == fsm_event::on_enter) {
-	//		_on_enter_func = std::move(func);
-	//	} else if constexpr (Event == fsm_event::on_update) {
-	//		_on_update_func = std::move(func);
-	//	} else if constexpr (Event == fsm_event::on_exit) {
-	//		_on_exit_func = std::move(func);
-	//	}
-	//}
-
-	// Handle transition to a specified state.
-	template <TransitionEnum Transition, StateEnum State>
-	void add_transition() {
-		static_assert(Transition != TransitionEnum::count,
-				"fsm_state : bad transition");
-		static_assert(State != StateEnum::count, "fsm_state : bad state");
-		std::get<size_t(Transition)>(_transitions) = State;
-	}
-
-	// Used internally to get which state is associated to the provided
-	// transition.
 	template <TransitionEnum Transition>
-	StateEnum transition_target() const {
-#if defined(FEA_FSM_NOTHROW)
-		assert(std::get<size_t(Transition)>(_transitions) == StateEnum::count);
-#else
-		if (std::get<size_t(Transition)>(_transitions) == StateEnum::count) {
-			throw std::invalid_argument{ "fsm_state : unhandled transition" };
-		}
-#endif
-
-		return std::get<size_t(Transition)>(_transitions);
+	constexpr StateEnum transition_target() const {
+		StateEnum e = _transitions.find<
+				fsm_transition_key<TransitionEnum, Transition>>();
+		return e;
 	}
-
-	//// Used internally, executes a specific event.
-	// template <fsm_event Event, class FSMT, class... FuncArgs>
-	// void execute_event([[maybe_unused]] StateEnum to_from_state, FSMT&
-	// machine, 		FuncArgs... func_args) { 	static_assert(Event !=
-	// fsm_event::on_enter_from, 			"state : do not execute
-	// on_enter_from, use on_enter instead " 			"and provide
-	// to_from_state"); static_assert(Event != fsm_event::on_exit_to,
-	// "state : do not execute on_exit_to, use on_exit instead and "
-	// "provide to_from_state");
-
-	//	static_assert(Event != fsm_event::count, "fsm_state : invalid event");
-
-
-	//	// Check the event, call the appropriate user functions if it is stored.
-	//	if constexpr (Event == fsm_event::on_enter) {
-	//		if (to_from_state != StateEnum::count
-	//				&& _on_enter_from_funcs[size_t(to_from_state)]) {
-	//			// has enter_from
-	//			std::invoke(_on_enter_from_funcs[size_t(to_from_state)],
-	//					machine, func_args...);
-
-	//		} else if (_on_enter_func) {
-	//			std::invoke(_on_enter_func, machine, func_args...);
-	//		}
-
-	//	} else if constexpr (Event == fsm_event::on_update) {
-	//		if (_on_update_func) {
-	//			std::invoke(_on_update_func, machine, func_args...);
-	//		}
-	//	} else if constexpr (Event == fsm_event::on_exit) {
-	//		if (to_from_state != StateEnum::count
-	//				&& _on_exit_to_funcs[size_t(to_from_state)]) {
-	//			// has exit_to
-	//			std::invoke(_on_exit_to_funcs[size_t(to_from_state)], machine,
-	//					func_args...);
-
-	//		} else if (_on_exit_func) {
-	//			std::invoke(_on_exit_func, machine, func_args...);
-	//		}
-	//	}
-	//}
 
 private:
-	template <fsm_event Event, StateEnum FromToState = StateEnum::count>
-	struct func_key {
-		static constexpr size_t func_idx;
-	};
-
-	std::array<StateEnum, size_t(TransitionEnum::count)> _transitions;
-	std::tuple<> _event_funcs;
-
-	OnEnterFunc _on_enter_func;
-	OnUpdateFunc _on_update_func;
-	OnExitFunc _on_exit_func;
-
-	// OnEnterFromTup _on_enter_from_funcs;
-	// OnExitToTup _on_exit_to_funcs;
-
-	// TBD, makes it heavy but helps debuggability
-	// const char* _name;
+	// std::array<StateEnum, size_t(TransitionEnum::count)> _transitions;
+	TransitionMap _transitions;
+	EventMap _events;
 };
 
-// template <class StateEnum, template <class, class> class... FuncPairs>
-// constexpr auto make_on_enter_from_funcs(FuncPairs... func_pairs) {
-//}
 
-template <class TransitionEnum, class StateEnum, class OnEnterFunc,
-		class OnUpdateFunc = decltype(detail::empty_lambda),
-		class OnExitFunc = decltype(detail::empty_lambda)>
-constexpr auto make_state(OnEnterFunc on_enter_func,
-		OnUpdateFunc on_update_func = detail::empty_lambda,
-		OnExitFunc on_exit_func = detail::empty_lambda) {
+template <class TransitionEnum, class StateEnum>
+struct fsm_builder {
 
-	return fsm_state<TransitionEnum, StateEnum, OnEnterFunc, OnUpdateFunc,
-			OnExitFunc>(on_enter_func, on_update_func, on_exit_func);
-}
+	template <TransitionEnum FromTransition, StateEnum ToState>
+	constexpr auto make_transition() {
+		static_assert(
+				FromTransition != TransitionEnum::count, "invalid transition");
+		static_assert(ToState != StateEnum::count, "invalid state");
 
+		return std::tuple{ fsm_transition_key<TransitionEnum, FromTransition>{},
+			ToState };
+	}
 
-// template <class TransitionEnum, class StateEnum, class... FuncArgs>
-// struct fsm {
-//	// using fsm_t = fsm<TransitionEnum, StateEnum, FuncArgs...>;
-//	using state_t = fsm_state<TransitionEnum, StateEnum, FuncArgs...>;
-//	using fsm_func_t = typename state_t::fsm_func_t;
-//
-//	// Here, we use move semantics not for performance (it doesn't do anything).
-//	// It is to make it clear to the user he cannot modify the state anymore.
-//	// The fsm gobbles the state.
-//	template <StateEnum State>
-//	void add_state(state_t&& state) {
-//		static_assert(State != StateEnum::count, "fsm : bad state");
-//
-//		std::get<size_t(State)>(_states) = std::move(state);
-//
-//		if (_default_state == StateEnum::count) {
-//			_default_state = State;
-//		}
-//	}
-//
-//	// Set starting state.
-//	// By default, the first added state is used.
-//	template <StateEnum State>
-//	void set_default_state() {
-//		static_assert(State != StateEnum::count, "fsm : bad state");
-//		_default_state = State;
-//	}
-//
-//	// First come first served.
-//	// Trigger will be called next update(...).
-//	// Calling this prevents subsequent triggers to be executed.
-//	// Allows more relaxed trigger argument requirements.
-//	template <TransitionEnum Transition>
-//	void delayed_trigger() {
-//		if (_has_delayed_trigger)
-//			return;
-//
-//		_has_delayed_trigger = true;
-//		_delayed_trigger_func = [](fsm& f, FuncArgs... func_args) {
-//			f._has_delayed_trigger = false;
-//			f.trigger<Transition>(func_args...);
-//		};
-//	}
-//
-//	// Trigger a transition.
-//	// Throws on bad transition (or asserts, if you defined FEA_FSM_NOTHROW).
-//	// If you had previously called delayed_trigger, this
-//	// won't do anything.
-//	template <TransitionEnum Transition>
-//	void trigger(FuncArgs... func_args) {
-//		if (_has_delayed_trigger)
-//			return;
-//
-//		maybe_init(func_args...);
-//
-//		StateEnum from_state = _current_state;
-//		StateEnum to_state = _states[size_t(_current_state)]
-//									 .transition_target<Transition>();
-//
-//		// Only execute on_exit if we aren't in a trigger from on_exit.
-//		if (!_in_on_exit) {
-//			_in_on_exit = true;
-//
-//			// Can recursively call trigger. We must handle that.
-//			_states[size_t(from_state)].execute_event<fsm_event::on_exit>(
-//					to_state, *this, func_args...);
-//
-//			if (_in_on_exit == false) {
-//				// Exit has triggered transition. Abort.
-//				return;
-//			}
-//		}
-//		_in_on_exit = false;
-//
-//		_current_state = to_state;
-//
-//		// Always execute on_enter.
-//		_states[size_t(to_state)].execute_event<fsm_event::on_enter>(
-//				from_state, *this, func_args...);
-//	}
-//
-//	// Update the fsm.
-//	// Calls on_update on the current state.
-//	// Processes delay_trigger if that was called.
-//	void update(FuncArgs... func_args) {
-//		while (_has_delayed_trigger) {
-//			std::invoke(_delayed_trigger_func, *this, func_args...);
-//		}
-//
-//		maybe_init(func_args...);
-//
-//		_states[size_t(_current_state)].execute_event<fsm_event::on_update>(
-//				StateEnum::count, *this, func_args...);
-//	}
-//
-//	// Get the specified state.
-//	template <StateEnum State>
-//	const state_t& state() const {
-//		return std::get<size_t(State)>(_states);
-//	}
-//	template <StateEnum State>
-//	state_t& state() {
-//		return std::get<size_t(State)>(_states);
-//	}
-//
-// private:
-//	void maybe_init(FuncArgs... func_args) {
-//		if (_current_state != StateEnum::count)
-//			return;
-//
-//		_current_state = _default_state;
-//		_states[size_t(_current_state)].execute_event<fsm_event::on_enter>(
-//				StateEnum::count, *this, func_args...);
-//	}
-//
-//	std::array<state_t, size_t(StateEnum::count)> _states;
-//	StateEnum _current_state = StateEnum::count;
-//	StateEnum _default_state = StateEnum::count;
-//
-//	bool _in_on_exit = false;
-//
-//	fsm_func_t _delayed_trigger_func = {};
-//	bool _has_delayed_trigger = false;
-//};
+	template <fsm_event Event, StateEnum FromToStateIdx = StateEnum::count,
+			class Func>
+	constexpr auto make_event(Func func) {
+		static_assert(Event != fsm_event::count, "invalid event");
+
+		return std::tuple{ fsm_event_key<Event, StateEnum, FromToStateIdx>{},
+			func };
+	}
+
+	template <class... Transitions, class... Events>
+	constexpr auto make_state(std::tuple<Transitions...> transitions,
+			std::tuple<Events...> events) {
+		auto tranny_map = detail::make_tuple_map(transitions);
+		auto events_map = detail::make_tuple_map(events);
+
+		return fsm_state<TransitionEnum, StateEnum, decltype(tranny_map),
+				decltype(events_map)>{ tranny_map, events_map };
+	}
+};
 
 } // namespace inl
 } // namespace fea
