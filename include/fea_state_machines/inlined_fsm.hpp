@@ -60,12 +60,10 @@ struct tuple_idx {
 	static_assert(!std::is_same_v<Tuple, std::tuple<>>,
 			"could not find T in given Tuple");
 };
-
 template <class T, class... Types>
 struct tuple_idx<T, std::tuple<T, Types...>> {
 	static constexpr size_t value = 0;
 };
-
 template <class T, class U, class... Types>
 struct tuple_idx<T, std::tuple<U, Types...>> {
 	static constexpr size_t value
@@ -75,18 +73,46 @@ struct tuple_idx<T, std::tuple<U, Types...>> {
 template <class T, class Tuple>
 inline constexpr size_t tuple_idx_v = tuple_idx<T, Tuple>::value;
 
-//// Used to identify an element by type.
-// template <class... Keys>
-// struct tuple_map_key {};
 
-// A ordered compile time map container.
-// You can search for elements using compile time types.
+template <class T, class Tuple>
+struct tuple_contains;
+template <class T>
+struct tuple_contains<T, std::tuple<>> : std::false_type {};
+template <class T, class U, class... Ts>
+struct tuple_contains<T, std::tuple<U, Ts...>>
+		: tuple_contains<T, std::tuple<Ts...>> {};
+template <class T, class... Ts>
+struct tuple_contains<T, std::tuple<T, Ts...>> : std::true_type {};
+
+template <class T, class Tuple>
+inline constexpr bool tuple_contains_v = tuple_contains<T, Tuple>::value;
+
+
+template <class Func, size_t... I>
+constexpr auto tuple_expander5000_impl(Func func, std::index_sequence<I...>) {
+	return func(std::integral_constant<size_t, I>{}...);
+}
+template <size_t N, class Func>
+constexpr auto tuple_expander5000(Func func) {
+	return tuple_expander5000_impl(func, std::make_index_sequence<N>());
+}
+
+// template <size_t N, class = std::make_index_sequence<N>>
+// struct tuple_expander5000;
+//
+// template <size_t N, std::size_t... Is>
+// struct tuple_expander5000<N, std::index_sequence<Is...>> {
+//	template <class Lambda>
+//	constexpr auto operator()(Lambda lambda) {
+//		return lambda(std::integral_constant<std::size_t, Is>{}...);
+//	}
+//};
 
 // Pass in your tuple_map_key type.
 // Build with multiple tuple<tuple_map_key<Key>, T>...
 template <class KeysTuple, class ValuesTuple>
 struct tuple_map {
-	tuple_map(KeysTuple keys, ValuesTuple values)
+	constexpr tuple_map(KeysTuple keys, ValuesTuple values)
 			: _keys(keys)
 			, _values(values) {
 	}
@@ -105,21 +131,39 @@ struct tuple_map {
 
 private:
 	// tuple<tuple_map_key<my, type, keys>>
-	KeysTuple _keys;
+	// Used to find the index of the value inside the other tuple.
+	KeysTuple _keys{};
 
 	// tuple<T>
-	ValuesTuple _values;
+	// Your values.
+	ValuesTuple _values{};
 };
 
-template <class... KeyValues>
-constexpr auto make_tuple_map(std::tuple<KeyValues...> tup) {
-	auto tup_of_tup = std::apply(
-			[&](auto... key_vals) {
-				auto keys = std::tuple{ std::get<0>(key_vals)... };
-				auto vals = std::tuple{ (std::get<1>(key_vals), ...) };
-				return std::tuple{ keys, vals };
-			},
-			tup);
+template <class Builder>
+constexpr auto make_tuple_map() {
+	// At compile time, take the tuple of tuple coming from the
+	// builder, iterate through it, grab the first elements of
+	// nested tuples (the key) and put that in a new tuple, grab
+	// the second element and put that in another tuple.
+
+	// Basically, go from tuple<tuple<key, value>...> to
+	// tuple<tuple<key...>, tuple<values...>>
+	// which is our map basically.
+
+	constexpr size_t tup_size = std::tuple_size_v<decltype(Builder::unpack())>;
+
+	constexpr auto tup_of_tup
+			= detail::tuple_expander5000<tup_size>([](auto... Idxes) constexpr {
+				  constexpr auto tup_of_tups = Builder::unpack();
+
+				  constexpr auto keys = std::tuple{ std::get<0>(
+						  std::get<decltype(Idxes)::value>(tup_of_tups))... };
+
+				  constexpr auto vals = std::tuple{ std::get<1>(
+						  std::get<decltype(Idxes)::value>(tup_of_tups))... };
+
+				  return std::tuple{ keys, vals };
+			  });
 
 	return tuple_map{ std::get<0>(tup_of_tup), std::get<1>(tup_of_tup) };
 }
@@ -169,9 +213,8 @@ struct fsm_state {
 
 	template <TransitionEnum Transition>
 	constexpr StateEnum transition_target() const {
-		StateEnum e = _transitions.find<
-				fsm_transition_key<TransitionEnum, Transition>>();
-		return e;
+		return _transitions
+				.find<fsm_transition_key<TransitionEnum, Transition>>();
 	}
 
 private:
@@ -181,38 +224,117 @@ private:
 };
 
 
+template <class TransitionEnum, class StateEnum, TransitionEnum FromT,
+		StateEnum ToS, class Parent>
+struct fsm_transition_builder {
+	template <TransitionEnum NewFromT, StateEnum NewToS>
+	constexpr auto make_transition() const {
+		return fsm_transition_builder<TransitionEnum, StateEnum, NewFromT,
+				NewToS, std::decay_t<decltype(*this)>>{};
+	}
+
+	static constexpr auto unpack() {
+		if constexpr (!std::is_same_v<Parent, void>) {
+			return std::tuple_cat(
+					std::make_tuple(std::tuple{
+							fsm_transition_key<TransitionEnum, FromT>{}, ToS }),
+					Parent::unpack());
+		} else {
+			return std::make_tuple(std::tuple{
+					fsm_transition_key<TransitionEnum, FromT>{}, ToS });
+		}
+	}
+};
+
+// template <class Func>
+// struct fsm_func_wrapper {
+//	static constexpr auto unpack() {
+//		return func;
+//	}
+//	static constexpr NewFunc func;
+//};
+
+template <fsm_event Event, class StateEnum, StateEnum FromToState, class Parent,
+		class Func>
+struct fsm_event_builder {
+	template <fsm_event NewEvent, StateEnum NewFromToState = StateEnum::count,
+			class NewFunc>
+	constexpr auto make_event(NewFunc newfunc) const {
+
+		// yes yes, lambdas can access static vars no problem ;)
+		static constexpr auto f = newfunc;
+
+		struct func_wrapper {
+			static constexpr auto unpack() {
+				// inline static constexpr Func mfunc = func;
+				return []() constexpr {
+					return f;
+				}
+				();
+			}
+		};
+
+		return fsm_event_builder<NewEvent, StateEnum, NewFromToState,
+				std::decay_t<decltype(*this)>, func_wrapper>{};
+	}
+
+	static constexpr auto unpack() {
+		if constexpr (!std::is_same_v<Parent, void>) {
+			return std::tuple_cat(
+					std::make_tuple(std::tuple{
+							fsm_event_key<Event, StateEnum, FromToState>{},
+							Func::unpack() }),
+					Parent::unpack());
+		} else {
+			return std::make_tuple(
+					std::tuple{ fsm_event_key<Event, StateEnum, FromToState>{},
+							Func::unpack() });
+		}
+	}
+};
+
 template <class TransitionEnum, class StateEnum>
 struct fsm_builder {
-
 	template <TransitionEnum FromTransition, StateEnum ToState>
-	constexpr auto make_transition() {
+	constexpr auto make_transition() const {
 		static_assert(
 				FromTransition != TransitionEnum::count, "invalid transition");
 		static_assert(ToState != StateEnum::count, "invalid state");
 
-		return std::tuple{ fsm_transition_key<TransitionEnum, FromTransition>{},
-			ToState };
+		return fsm_transition_builder<TransitionEnum, StateEnum, FromTransition,
+				ToState, void>{};
 	}
 
-	template <fsm_event Event, StateEnum FromToStateIdx = StateEnum::count,
+	template <fsm_event Event, StateEnum FromToState = StateEnum::count,
 			class Func>
-	constexpr auto make_event(Func func) {
+	constexpr auto make_event(Func func) const {
 		static_assert(Event != fsm_event::count, "invalid event");
 
-		return std::tuple{ fsm_event_key<Event, StateEnum, FromToStateIdx>{},
-			func };
+		static constexpr auto f = func;
+		struct func_wrapper {
+			static constexpr auto unpack() {
+				return []() constexpr {
+					return f;
+				}
+				();
+			}
+		};
+
+		return fsm_event_builder<Event, StateEnum, FromToState, void,
+				func_wrapper>{};
+		// return std::tuple{ fsm_event_key<Event, StateEnum, FromToStateIdx>{},
+		//	func };
 	}
 
-	template <class... Transitions, class... Events>
-	constexpr auto make_state(std::tuple<Transitions...> transitions,
-			std::tuple<Events...> events) {
-		auto tranny_map = detail::make_tuple_map(transitions);
-		auto events_map = detail::make_tuple_map(events);
+	template <class TransitionBuilder, class EventBuilder>
+	constexpr auto make_state(TransitionBuilder, EventBuilder) const {
+		constexpr auto tranny_map = detail::make_tuple_map<TransitionBuilder>();
+		constexpr auto event_map = detail::make_tuple_map<EventBuilder>();
 
 		return fsm_state<TransitionEnum, StateEnum, decltype(tranny_map),
-				decltype(events_map)>{ tranny_map, events_map };
+				decltype(event_map)>{ tranny_map, event_map };
 	}
-};
+}; // namespace inl
 
 } // namespace inl
 } // namespace fea

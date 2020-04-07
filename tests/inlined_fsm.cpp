@@ -33,23 +33,36 @@ TEST(simple_inlined_fsm, example) {
 	// Create your states.
 	// Walk
 	{
-		fea::fsm_builder<transition, state> builder;
+		constexpr fea::fsm_builder<transition, state> builder;
 
-		constexpr auto walk_to_run
-				= builder.make_transition<transition::do_run, state::run>();
+		auto walk_transitions
+				= builder.make_transition<transition::do_run, state::run>()
+						  .make_transition<transition::do_jump, state::jump>()
+						  .make_transition<transition::do_walk, state::walk>();
 
-		constexpr auto on_enter = builder.make_event<fea::fsm_event::on_enter>(
-				[](auto&, test_data& t) { ++t.num_onenter_calls; });
+		auto walk_events
+				= builder.make_event<fea::fsm_event::on_enter>(
+								 [](auto&, test_data& t) {
+									 ++t.num_onenter_calls;
+								 })
+						  .make_event<fea::fsm_event::on_exit_to, state::jump>(
+								  [](auto&, test_data& t) {
+									  ++t.num_onexitto_calls;
+								  });
 
 		// constexpr auto walk_state = builder.make_state(
 		//	{ walk_to_run }, { on_enter });
 
 		// Must use std::make_tuple if you only have 1 element, or else the copy
 		// ctor is called!
-		auto walk_state = builder.make_state(
-				std::make_tuple(walk_to_run), std::make_tuple(on_enter));
 
-		state s = walk_state.transition_target<transition::do_run>();
+		auto walk_state = builder.make_state(walk_transitions, walk_events);
+		// auto walk_state = builder.make_state(walk_transitions.unpack(),
+		// events);
+		// auto walk_state = builder.make_state(
+		//		std::make_tuple(walk_to_run), std::make_tuple(on_enter));
+
+		state s = walk_state.transition_target<transition::do_walk>();
 
 		printf("%zu\n", size_t(s));
 
