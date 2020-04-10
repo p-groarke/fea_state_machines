@@ -108,7 +108,7 @@ TEST(constexpr_fsm, example) {
 	EXPECT_EQ(mtest_data.num_onexitto_calls, 0u);
 
 	// Capture the trigger output.
-	auto m1 = machine.trigger<transition::do_jump>(mtest_data);
+	auto m1 = machine.template trigger<transition::do_jump>(mtest_data);
 	EXPECT_EQ(mtest_data.num_onenterfrom_calls, 0u);
 	EXPECT_EQ(mtest_data.num_onenter_calls, 2u);
 	EXPECT_EQ(mtest_data.num_onupdate_calls, 1u);
@@ -122,7 +122,7 @@ TEST(constexpr_fsm, example) {
 	EXPECT_EQ(mtest_data.num_onexit_calls, 0u);
 	EXPECT_EQ(mtest_data.num_onexitto_calls, 1u);
 
-	auto m2 = m1.trigger<transition::do_run>(mtest_data);
+	auto m2 = m1.template trigger<transition::do_run>(mtest_data);
 	EXPECT_EQ(mtest_data.num_onenterfrom_calls, 1u);
 	EXPECT_EQ(mtest_data.num_onenter_calls, 2u);
 	EXPECT_EQ(mtest_data.num_onupdate_calls, 1u);
@@ -169,9 +169,9 @@ TEST(constexpr_fsm, compiler_letter) {
 		static_assert(assert_val, "Dear");
 
 		if constexpr (debug_build) {
-			return machine.trigger<transition::do_debug>();
+			return machine.template trigger<transition::do_debug>();
 		} else {
-			return machine.trigger<transition::do_release>();
+			return machine.template trigger<transition::do_release>();
 		}
 	});
 	fea_event(intro_onupdate, [](auto&) { return 0; });
@@ -200,7 +200,7 @@ TEST(constexpr_fsm, compiler_letter) {
 
 	fea_event(debug_onenter, [](auto& m) {
 		static_assert(assert_val, "In debug mode,");
-		return m.trigger<transition::do_paragraph>();
+		return m.template trigger<transition::do_paragraph>();
 	});
 	fea_event(debug_onupdate, [](auto&) { return 1; });
 
@@ -218,7 +218,7 @@ TEST(constexpr_fsm, compiler_letter) {
 
 	fea_event(release_onenter, [](auto& m) {
 		static_assert(assert_val, "In release mode,");
-		return m.trigger<transition::do_paragraph>();
+		return m.template trigger<transition::do_paragraph>();
 	});
 	fea_event(release_onupdate, [](auto&) { return 2; });
 
@@ -238,7 +238,7 @@ TEST(constexpr_fsm, compiler_letter) {
 		static_assert(assert_val,
 				"We've been very critical of you in the "
 				"past.");
-		return m.trigger<transition::do_outro>();
+		return m.template trigger<transition::do_outro>();
 	});
 	fea_event(par_onupdate, [](auto&) { return 3; });
 	fea_event(par_onexit,

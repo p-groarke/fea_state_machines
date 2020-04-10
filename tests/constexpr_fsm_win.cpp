@@ -118,7 +118,7 @@ TEST(constexpr_fsm, example_windows) {
 	EXPECT_EQ(mtest_data.num_onexitto_calls, 0u);
 
 	// Capture the trigger output.
-	auto m1 = machine.trigger<transition::do_jump>(mtest_data);
+	auto m1 = machine.template trigger<transition::do_jump>(mtest_data);
 	EXPECT_EQ(mtest_data.num_onenterfrom_calls, 0u);
 	EXPECT_EQ(mtest_data.num_onenter_calls, 2u);
 	EXPECT_EQ(mtest_data.num_onupdate_calls, 1u);
@@ -132,7 +132,7 @@ TEST(constexpr_fsm, example_windows) {
 	EXPECT_EQ(mtest_data.num_onexit_calls, 0u);
 	EXPECT_EQ(mtest_data.num_onexitto_calls, 1u);
 
-	auto m2 = m1.trigger<transition::do_run>(mtest_data);
+	auto m2 = m1.template trigger<transition::do_run>(mtest_data);
 	EXPECT_EQ(mtest_data.num_onenterfrom_calls, 1u);
 	EXPECT_EQ(mtest_data.num_onenter_calls, 2u);
 	EXPECT_EQ(mtest_data.num_onupdate_calls, 1u);
@@ -162,9 +162,16 @@ TEST(constexpr_fsm, compiler_letter_windows) {
 		do_release,
 		do_paragraph,
 		do_outro,
-		count
+		count,
 	};
-	enum class state { intro, debug, release, paragraph, outro, count };
+	enum class state {
+		intro,
+		debug,
+		release,
+		paragraph,
+		outro,
+		count,
+	};
 
 	fea::fsm_builder<transition, state> builder;
 
@@ -180,9 +187,11 @@ TEST(constexpr_fsm, compiler_letter_windows) {
 						 static_assert(assert_val, "Dear");
 
 						 if constexpr (debug_build) {
-							 return machine.trigger<transition::do_debug>();
+							 return machine
+									 .template trigger<transition::do_debug>();
 						 } else {
-							 return machine.trigger<transition::do_release>();
+							 return machine.template trigger<
+									 transition::do_release>();
 						 }
 					 })
 					  .make_event<fea::fsm_event::on_update>(
@@ -209,7 +218,7 @@ TEST(constexpr_fsm, compiler_letter_windows) {
 	auto debug_events
 			= builder.make_event<fea::fsm_event::on_enter>([](auto& m) {
 						 static_assert(assert_val, "In debug mode,");
-						 return m.trigger<transition::do_paragraph>();
+						 return m.template trigger<transition::do_paragraph>();
 					 })
 					  .make_event<fea::fsm_event::on_update>(
 							  [](auto&) { return 1; });
@@ -225,7 +234,7 @@ TEST(constexpr_fsm, compiler_letter_windows) {
 	auto release_events
 			= builder.make_event<fea::fsm_event::on_enter>([](auto& m) {
 						 static_assert(assert_val, "In release mode,");
-						 return m.trigger<transition::do_paragraph>();
+						 return m.template trigger<transition::do_paragraph>();
 					 })
 					  .make_event<fea::fsm_event::on_update>(
 							  [](auto&) { return 2; });
@@ -243,7 +252,7 @@ TEST(constexpr_fsm, compiler_letter_windows) {
 						 static_assert(assert_val,
 								 "We've been very critical of you in the "
 								 "past.");
-						 return m.trigger<transition::do_outro>();
+						 return m.template trigger<transition::do_outro>();
 					 })
 					  .make_event<fea::fsm_event::on_update>(
 							  [](auto&) { return 3; })

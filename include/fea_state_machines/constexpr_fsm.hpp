@@ -48,7 +48,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define FEA_TOKENPASTE(x, y) x##y
 #define FEA_TOKENPASTE2(x, y) FEA_TOKENPASTE(x, y)
 #define fea_event(name, f) \
-	struct FEA_TOKENPASTE2(fea_event_builder, __LINE__) { \
+	struct FEA_TOKENPASTE2( \
+			FEA_TOKENPASTE2(fea_event_builder_, name), __LINE__) { \
 		using is_event_builder = int; \
 		static constexpr auto unpack() { \
 			return f; \
@@ -246,6 +247,9 @@ struct fsm_transition_key {};
 template <fsm_event Event, class StateEnum, StateEnum FromToState>
 struct fsm_event_key {};
 
+// State key is used to find states in the state machine itself.
+template <class StateEnum, StateEnum State>
+struct fsm_state_key {};
 
 template <class TransitionEnum, class StateEnum, class TransitionMap,
 		class EventMap, StateEnum State>
@@ -345,9 +349,6 @@ private:
 	static constexpr auto _events = EventMap::unpack();
 };
 
-
-template <class StateEnum, StateEnum State>
-struct fsm_state_key {};
 
 template <class TransitionEnum, class StateEnum, StateEnum CurrentState,
 		StateEnum StartState, bool InOnExit, class StateMap>
