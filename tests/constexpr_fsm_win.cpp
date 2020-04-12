@@ -343,8 +343,9 @@ TEST(constexpr_fsm, generate_tuple_windows) {
 				  return std::make_tuple("prime");
 			  });
 
-	std::apply([](auto&... vals) { ((std::cout << vals << std::endl), ...); },
-			tup);
+	// Print the tuple.
+	// std::apply([](auto&... vals) { ((std::cout << vals << std::endl), ...);
+	// }, 		tup);
 
 	constexpr auto test_tup = std::make_tuple("prime", "a string", 42,
 			"a string", 42, "a string", 42, "a string", 42, "a string", 42);
@@ -354,7 +355,10 @@ TEST(constexpr_fsm, generate_tuple_windows) {
 
 	static_assert(std::tuple_size_v<
 						  machine_tup_t> == std::tuple_size_v<expected_tup_t>,
-			"unit test failed : tuples are unequal");
+			"unit test failed : tuples aren't the same size");
+
+	static_assert(std::is_same_v<machine_tup_t, expected_tup_t>,
+			"unit test failed : tuples are different types");
 }
 
 } // namespace

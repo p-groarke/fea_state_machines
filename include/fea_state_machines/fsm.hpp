@@ -257,15 +257,16 @@ struct fsm {
 
 		StateEnum from_state = _current_state;
 		StateEnum to_state = _states[size_t(_current_state)]
-									 .transition_target<Transition>();
+									 .template transition_target<Transition>();
 
 		// Only execute on_exit if we aren't in a trigger from on_exit.
 		if (!_in_on_exit) {
 			_in_on_exit = true;
 
 			// Can recursively call trigger. We must handle that.
-			_states[size_t(from_state)].execute_event<fsm_event::on_exit>(
-					to_state, *this, func_args...);
+			_states[size_t(from_state)]
+					.template execute_event<fsm_event::on_exit>(
+							to_state, *this, func_args...);
 
 			if (_in_on_exit == false) {
 				// Exit has triggered transition. Abort.
@@ -277,7 +278,7 @@ struct fsm {
 		_current_state = to_state;
 
 		// Always execute on_enter.
-		_states[size_t(to_state)].execute_event<fsm_event::on_enter>(
+		_states[size_t(to_state)].template execute_event<fsm_event::on_enter>(
 				from_state, *this, func_args...);
 	}
 
@@ -291,8 +292,9 @@ struct fsm {
 
 		maybe_init(func_args...);
 
-		_states[size_t(_current_state)].execute_event<fsm_event::on_update>(
-				StateEnum::count, *this, func_args...);
+		_states[size_t(_current_state)]
+				.template execute_event<fsm_event::on_update>(
+						StateEnum::count, *this, func_args...);
 	}
 
 	// Get the specified state.
@@ -311,8 +313,9 @@ private:
 			return;
 
 		_current_state = _default_state;
-		_states[size_t(_current_state)].execute_event<fsm_event::on_enter>(
-				StateEnum::count, *this, func_args...);
+		_states[size_t(_current_state)]
+				.template execute_event<fsm_event::on_enter>(
+						StateEnum::count, *this, func_args...);
 	}
 
 	std::array<state_t, size_t(StateEnum::count)> _states;

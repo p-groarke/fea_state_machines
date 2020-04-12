@@ -13,10 +13,10 @@ inline auto runtime_get(Func func, Tuple& tup, size_t idx) {
 	}
 }
 
-TEST(inline_fsm, basics) {
-
-	// std::tuple t{ 42, 3 };
-	// size_t runtime = 0;
-
-	// runtime_get([](auto& myval) { printf("\n%d\n\n", myval); }, t, 0);
-}
+// TEST(inline_fsm, basics) {
+//
+//	// std::tuple t{ 42, 3 };
+//	// size_t runtime = 0;
+//
+//	// runtime_get([](auto& myval) { printf("\n%d\n\n", myval); }, t, 0);
+//}
