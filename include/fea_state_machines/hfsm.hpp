@@ -30,16 +30,11 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #pragma once
-//#include "fea/cpu/platform.hpp"
-//#include "fea/meta/static_for.hpp"
-//#include "fea/meta/tuple_helpers.hpp"
-
 #include <algorithm>
 #include <array>
 #include <cassert>
 #include <functional>
 #include <initializer_list>
-//#include <scope_guard/scope_guard.hpp>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
@@ -49,6 +44,54 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // - sanity check
 
 namespace fea {
+/*
+A large and feature-full heap based hfsm.
+	https://statecharts.github.io/
+
+Features :
+	- OnEnter, OnUpdate, OnExit.
+	- OnEnterFrom, OnExitTo.
+		You decide if you override event behavior when coming from/going to
+		specified states.
+	- Supports user arguments in the callbacks (explained below).
+	- State hierarchies : The "main" feature of a state chart.
+	- Transition guards : These only transition if their predicate
+		evaluates to true.
+	- Auto transition guards : These automatically transition when you
+		call update (before it) if their predicate evaluates to true.
+	- Parallel states : Different state hierarchies running in parallel.
+	- Yield transitions (aka history state) : This transition will return to the
+		previous state.
+	- Does NOT provide a "get_current_state" function.
+		Checking the current state of an fsm is a major smell and usually points
+		to either a misuse, misunderstanding or incomplete implementation of the
+		fsm. Do not do that, rethink your states and transitions instead.
+
+Callbacks :
+	- The first argument of your callback is always a ref to the fsm itself.
+		This is useful for retriggering and when you store fsms in containers.
+		You can use auto& to simplify your callback signature.
+		[](auto& mymachine){}
+
+	- Pass your own types at the end of the fsm and fsm_state template.
+		These will be passed on to your callbacks when you call update or
+		trigger.
+		For example : fsm<mytransitions, mystates, int, bool&, const void*>;
+		Callback signature is:
+			[](auto& machine, int, bool&, const void*){}
+
+
+Notes :
+	- Uses std::function and heap.
+	- Throws on unhandled transition.
+		You must explicitly add re-entrant transitions or ignored transitions
+		(by providing empty callbacks). IMHO this is one of the bigest source of
+		bugs and broken behavior when working with FSMs. Throwing makes
+		debugging much faster and easier.
+
+*/
+
+
 namespace detail {
 #if !defined(NDEBUG)
 inline constexpr bool debug_build = true;

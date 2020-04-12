@@ -43,7 +43,45 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 /*
- */
+A compile-time executable very simple fsm.
+	https://philippegroarke.com/posts/2020/constexpr_fsm/
+
+Features :
+	- OnEnter, OnUpdate, OnExit.
+	- OnEnterFrom, OnExitTo.
+		Overrides event behavior when coming from/going to specified states.
+	- Supports user arguments in the callbacks, as the fsm stores your lambda
+		directly.
+	- static_asserts wherever possible.
+	- Does NOT provide a "get_current_state" function.
+		Checking the current state of an fsm is a major smell and usually points
+		to either a misuse, misunderstanding or incomplete implementation of the
+		fsm. Do not do that, rethink your states and transitions instead.
+
+Callbacks :
+	- The first argument of your callback is always a ref to the fsm itself.
+		This is useful for retriggering and when you store fsms in containers.
+		You can use auto& to simplify your callback signature.
+		[](auto& mymachine){}
+
+	- Pass your own types at the end of the fsm and fsm_state template.
+		These will be passed on to your callbacks when you call update or
+		trigger.
+		For example : fsm<mytransitions, mystates, int, bool&, const void*>;
+		Callback signature is:
+			[](auto& machine, int, bool&, const void*){}
+
+
+Notes :
+	- Uses tuple of Func types.
+	- You *must* return the results of trigger.
+	- You *must* capture the trigger results, this is your new state.
+
+TODO :
+	- If this turns out to be useful, adding the following seems reasonable.
+	- Transition guards.
+	- Yield transitions (aka history state).
+*/
 
 #define FEA_TOKENPASTE(x, y) x##y
 #define FEA_TOKENPASTE2(x, y) FEA_TOKENPASTE(x, y)

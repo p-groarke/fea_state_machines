@@ -38,7 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace fea {
 /*
-[Almost] the smallest and simplest fea fsm.
+A small, fast and simple stack based fsm.
 	Not as small as inlined simple fsm, but easier to work with and debug.
 
 Features :
