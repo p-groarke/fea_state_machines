@@ -2,14 +2,9 @@ language: cpp
 
 before_install:
   - eval "${MATRIX_EVAL}"
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-      brew update;
-      brew upgrade cmake;
-      brew install python3;
-    fi
 install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-      pyenv global 3.7.1;
+      pyenv global 3.7;
     fi
   - pip3 install conan
   - conan user
@@ -83,7 +78,7 @@ script:
   - mkdir build && cd build
   - cmake .. -DBUILD_TESTING=On -DCMAKE_BUILD_TYPE=$CONFIG
   - cmake --build . --config $CONFIG
-  - ./bin/fea_flat_recurse_tests
+  - ./bin/fea_state_machines_tests
 
 notifications:
   email:

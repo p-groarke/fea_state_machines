@@ -7,7 +7,7 @@ platform:
 configuration:
   - Debug
   - Release
-clone_folder: c:\projects\fea_flat_recurse
+clone_folder: c:\projects\fea_state_machines
 install:
   - cmd: set PATH=%PATH%;%PYTHON%/Scripts/
   - cmd: pip.exe install conan
@@ -16,12 +16,12 @@ install:
   - cmd: conan --version
   - cmd: conan remote add bincrafters https://api.bintray.com/conan/conan/conan-center
   - cmd: conan profile new default --detect
-  - cmd: cd c:\projects\fea_flat_recurse
+  - cmd: cd c:\projects\fea_state_machines
 build:
-  project: c:\projects\fea_flat_recurse\build\fea_flat_recurse.sln
+  project: c:\projects\fea_state_machines\build\fea_state_machines.sln
   parallel: true
 test_script:
-  - cmd: c:\projects\fea_flat_recurse\build\bin\fea_flat_recurse_tests.exe
+  - cmd: c:\projects\fea_state_machines\build\bin\fea_state_machines_tests.exe
 for:
   -
     matrix:
@@ -29,7 +29,7 @@ for:
         - platform: x64
     before_build:
       - cmd: conan profile update settings.arch="x86_64" default
-      - cmd: cd c:\projects\fea_flat_recurse
+      - cmd: cd c:\projects\fea_state_machines
       - cmd: mkdir build
       - cmd: cd build
       - cmd: cmake .. -A %PLATFORM% -DBUILD_TESTING=On
@@ -39,7 +39,7 @@ for:
         - platform: Win32
     before_build:
       - cmd: conan profile update settings.arch="x86" default
-      - cmd: cd c:\projects\fea_flat_recurse
+      - cmd: cd c:\projects\fea_state_machines
       - cmd: mkdir build
       - cmd: cd build
       - cmd: cmake .. -A %PLATFORM% -DBUILD_TESTING=On
