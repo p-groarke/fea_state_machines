@@ -95,11 +95,11 @@ TEST(hfsm, basics) {
 	walk_normal_state.execute_event<fea::hfsm_event::on_enter>(
 			state::walk_crouch, smachine);
 
-	EXPECT_EQ(state_test.enter_num, 3);
-	EXPECT_EQ(state_test.enter_from_num, 2);
-	EXPECT_EQ(state_test.update_num, 0);
-	EXPECT_EQ(state_test.exit_num, 0);
-	EXPECT_EQ(state_test.exit_to_num, 0);
+	EXPECT_EQ(state_test.enter_num, 3u);
+	EXPECT_EQ(state_test.enter_from_num, 2u);
+	EXPECT_EQ(state_test.update_num, 0u);
+	EXPECT_EQ(state_test.exit_num, 0u);
+	EXPECT_EQ(state_test.exit_to_num, 0u);
 
 
 	fea::hfsm_state<transition, state> walk_crouch_state{ state::walk_crouch,
@@ -178,19 +178,19 @@ TEST(hfsm, basics) {
 			state::walk_normal, smachine);
 	walk_state.execute_event<fea::hfsm_event::on_enter>(
 			state::walk_crouch, smachine);
-	EXPECT_EQ(state_test.enter_num, 3);
-	EXPECT_EQ(state_test.enter_from_num, 2);
-	EXPECT_EQ(state_test.update_num, 0);
-	EXPECT_EQ(state_test.exit_num, 0);
-	EXPECT_EQ(state_test.exit_to_num, 0);
+	EXPECT_EQ(state_test.enter_num, 3u);
+	EXPECT_EQ(state_test.enter_from_num, 2u);
+	EXPECT_EQ(state_test.update_num, 0u);
+	EXPECT_EQ(state_test.exit_num, 0u);
+	EXPECT_EQ(state_test.exit_to_num, 0u);
 
 	walk_state.execute_event<fea::hfsm_event::on_update>(
 			state::count, smachine);
-	EXPECT_EQ(state_test.enter_num, 3);
-	EXPECT_EQ(state_test.enter_from_num, 2);
-	EXPECT_EQ(state_test.update_num, 1);
-	EXPECT_EQ(state_test.exit_num, 0);
-	EXPECT_EQ(state_test.exit_to_num, 0);
+	EXPECT_EQ(state_test.enter_num, 3u);
+	EXPECT_EQ(state_test.enter_from_num, 2u);
+	EXPECT_EQ(state_test.update_num, 1u);
+	EXPECT_EQ(state_test.exit_num, 0u);
+	EXPECT_EQ(state_test.exit_to_num, 0u);
 
 	walk_state.execute_event<fea::hfsm_event::on_exit>(state::run, smachine);
 	walk_state.execute_event<fea::hfsm_event::on_exit>(state::jump, smachine);
@@ -199,11 +199,11 @@ TEST(hfsm, basics) {
 			state::walk_normal, smachine);
 	walk_state.execute_event<fea::hfsm_event::on_exit>(
 			state::walk_crouch, smachine);
-	EXPECT_EQ(state_test.enter_num, 3);
-	EXPECT_EQ(state_test.enter_from_num, 2);
-	EXPECT_EQ(state_test.update_num, 1);
-	EXPECT_EQ(state_test.exit_num, 4);
-	EXPECT_EQ(state_test.exit_to_num, 1);
+	EXPECT_EQ(state_test.enter_num, 3u);
+	EXPECT_EQ(state_test.enter_from_num, 2u);
+	EXPECT_EQ(state_test.update_num, 1u);
+	EXPECT_EQ(state_test.exit_num, 4u);
+	EXPECT_EQ(state_test.exit_to_num, 1u);
 
 	fea::hfsm_state<transition, state>::tranny_info tg;
 	walk_state.transition<transition::do_walk>(tg);
@@ -309,11 +309,11 @@ TEST(hfsm, basics) {
 			state::walk_normal, smachine);
 	run_state.execute_event<fea::hfsm_event::on_enter>(
 			state::walk_crouch, smachine);
-	EXPECT_EQ(state_test.enter_num, 4);
-	EXPECT_EQ(state_test.enter_from_num, 1);
-	EXPECT_EQ(state_test.update_num, 0);
-	EXPECT_EQ(state_test.exit_num, 0);
-	EXPECT_EQ(state_test.exit_to_num, 0);
+	EXPECT_EQ(state_test.enter_num, 4u);
+	EXPECT_EQ(state_test.enter_from_num, 1u);
+	EXPECT_EQ(state_test.update_num, 0u);
+	EXPECT_EQ(state_test.exit_num, 0u);
+	EXPECT_EQ(state_test.exit_to_num, 0u);
 
 	run_state.execute_event<fea::hfsm_event::on_update>(state::run, smachine);
 	run_state.execute_event<fea::hfsm_event::on_update>(state::jump, smachine);
@@ -322,11 +322,11 @@ TEST(hfsm, basics) {
 			state::walk_normal, smachine);
 	run_state.execute_event<fea::hfsm_event::on_update>(
 			state::walk_crouch, smachine);
-	EXPECT_EQ(state_test.enter_num, 4);
-	EXPECT_EQ(state_test.enter_from_num, 1);
-	EXPECT_EQ(state_test.update_num, 5); // parent update not enabled
-	EXPECT_EQ(state_test.exit_num, 0);
-	EXPECT_EQ(state_test.exit_to_num, 0);
+	EXPECT_EQ(state_test.enter_num, 4u);
+	EXPECT_EQ(state_test.enter_from_num, 1u);
+	EXPECT_EQ(state_test.update_num, 5u); // parent update not enabled
+	EXPECT_EQ(state_test.exit_num, 0u);
+	EXPECT_EQ(state_test.exit_to_num, 0u);
 
 	run_state.execute_event<fea::hfsm_event::on_exit>(state::run, smachine);
 	run_state.execute_event<fea::hfsm_event::on_exit>(state::jump, smachine);
@@ -335,11 +335,11 @@ TEST(hfsm, basics) {
 			state::walk_normal, smachine);
 	run_state.execute_event<fea::hfsm_event::on_exit>(
 			state::walk_crouch, smachine);
-	EXPECT_EQ(state_test.enter_num, 4);
-	EXPECT_EQ(state_test.enter_from_num, 1);
-	EXPECT_EQ(state_test.update_num, 5);
-	EXPECT_EQ(state_test.exit_num, 4);
-	EXPECT_EQ(state_test.exit_to_num, 1);
+	EXPECT_EQ(state_test.enter_num, 4u);
+	EXPECT_EQ(state_test.enter_from_num, 1u);
+	EXPECT_EQ(state_test.update_num, 5u);
+	EXPECT_EQ(state_test.exit_num, 4u);
+	EXPECT_EQ(state_test.exit_to_num, 1u);
 
 	tg = {};
 	run_state.transition<transition::do_walk>(tg);
@@ -386,11 +386,11 @@ TEST(hfsm, basics) {
 			state::walk_normal, smachine);
 	jump_state.execute_event<fea::hfsm_event::on_enter>(
 			state::walk_crouch, smachine);
-	EXPECT_EQ(state_test.enter_num, 3);
-	EXPECT_EQ(state_test.enter_from_num, 2);
-	EXPECT_EQ(state_test.update_num, 0);
-	EXPECT_EQ(state_test.exit_num, 0);
-	EXPECT_EQ(state_test.exit_to_num, 0);
+	EXPECT_EQ(state_test.enter_num, 3u);
+	EXPECT_EQ(state_test.enter_from_num, 2u);
+	EXPECT_EQ(state_test.update_num, 0u);
+	EXPECT_EQ(state_test.exit_num, 0u);
+	EXPECT_EQ(state_test.exit_to_num, 0u);
 
 	jump_state.execute_event<fea::hfsm_event::on_update>(state::run, smachine);
 	jump_state.execute_event<fea::hfsm_event::on_update>(state::jump, smachine);
@@ -399,11 +399,11 @@ TEST(hfsm, basics) {
 			state::walk_normal, smachine);
 	jump_state.execute_event<fea::hfsm_event::on_update>(
 			state::walk_crouch, smachine);
-	EXPECT_EQ(state_test.enter_num, 3);
-	EXPECT_EQ(state_test.enter_from_num, 2);
-	EXPECT_EQ(state_test.update_num, 5);
-	EXPECT_EQ(state_test.exit_num, 0);
-	EXPECT_EQ(state_test.exit_to_num, 0);
+	EXPECT_EQ(state_test.enter_num, 3u);
+	EXPECT_EQ(state_test.enter_from_num, 2u);
+	EXPECT_EQ(state_test.update_num, 5u);
+	EXPECT_EQ(state_test.exit_num, 0u);
+	EXPECT_EQ(state_test.exit_to_num, 0u);
 
 	jump_state.execute_event<fea::hfsm_event::on_exit>(state::run, smachine);
 	jump_state.execute_event<fea::hfsm_event::on_exit>(state::jump, smachine);
@@ -412,11 +412,11 @@ TEST(hfsm, basics) {
 			state::walk_normal, smachine);
 	jump_state.execute_event<fea::hfsm_event::on_exit>(
 			state::walk_crouch, smachine);
-	EXPECT_EQ(state_test.enter_num, 3);
-	EXPECT_EQ(state_test.enter_from_num, 2);
-	EXPECT_EQ(state_test.update_num, 5);
-	EXPECT_EQ(state_test.exit_num, 5);
-	EXPECT_EQ(state_test.exit_to_num, 0);
+	EXPECT_EQ(state_test.enter_num, 3u);
+	EXPECT_EQ(state_test.enter_from_num, 2u);
+	EXPECT_EQ(state_test.update_num, 5u);
+	EXPECT_EQ(state_test.exit_num, 5u);
+	EXPECT_EQ(state_test.exit_to_num, 0u);
 
 	tg = {};
 	jump_state.transition<transition::do_walk>(tg);
@@ -516,8 +516,8 @@ TEST(hfsm, parallel) {
 	smachine.update();
 	smachine.update();
 
-	EXPECT_EQ(enters, 3);
-	EXPECT_EQ(updates, 5);
+	EXPECT_EQ(enters, 3u);
+	EXPECT_EQ(updates, 5u);
 }
 
 TEST(hfsm, auto_transition_guards) {
@@ -565,30 +565,30 @@ TEST(hfsm, auto_transition_guards) {
 	// smachine.enable_print();
 	smachine.update();
 
-	EXPECT_EQ(enters, 1);
-	EXPECT_EQ(updates, 1);
-	EXPECT_EQ(exits, 0);
+	EXPECT_EQ(enters, 1u);
+	EXPECT_EQ(updates, 1u);
+	EXPECT_EQ(exits, 0u);
 
 	auto_guard = true;
 	smachine.update();
 
-	EXPECT_EQ(enters, 2);
-	EXPECT_EQ(updates, 1);
-	EXPECT_EQ(exits, 1);
+	EXPECT_EQ(enters, 2u);
+	EXPECT_EQ(updates, 1u);
+	EXPECT_EQ(exits, 1u);
 
 	auto_guard = false;
 	smachine.update();
 
-	EXPECT_EQ(enters, 2);
-	EXPECT_EQ(updates, 2);
-	EXPECT_EQ(exits, 1);
+	EXPECT_EQ(enters, 2u);
+	EXPECT_EQ(updates, 2u);
+	EXPECT_EQ(exits, 1u);
 
 	auto_guard = true;
 	smachine.update();
 
-	EXPECT_EQ(enters, 3);
-	EXPECT_EQ(updates, 2);
-	EXPECT_EQ(exits, 2);
+	EXPECT_EQ(enters, 3u);
+	EXPECT_EQ(updates, 2u);
+	EXPECT_EQ(exits, 2u);
 }
 
 TEST(hfsm, history_transition_guards) {
@@ -657,74 +657,74 @@ TEST(hfsm, history_transition_guards) {
 	// smachine.enable_print();
 	smachine.update();
 
-	EXPECT_EQ(enters, 1);
-	EXPECT_EQ(enters_from_walk, 0);
-	EXPECT_EQ(enters_from_run, 0);
-	EXPECT_EQ(updates, 1);
-	EXPECT_EQ(exits, 0);
-	EXPECT_EQ(exits_to_walk, 0);
-	EXPECT_EQ(exits_to_run, 0);
+	EXPECT_EQ(enters, 1u);
+	EXPECT_EQ(enters_from_walk, 0u);
+	EXPECT_EQ(enters_from_run, 0u);
+	EXPECT_EQ(updates, 1u);
+	EXPECT_EQ(exits, 0u);
+	EXPECT_EQ(exits_to_walk, 0u);
+	EXPECT_EQ(exits_to_run, 0u);
 
 	smachine.trigger<transition::do_jump>();
 	smachine.update();
 
-	EXPECT_EQ(enters, 1);
-	EXPECT_EQ(enters_from_walk, 1);
-	EXPECT_EQ(enters_from_run, 0);
-	EXPECT_EQ(updates, 1);
-	EXPECT_EQ(exits, 1);
-	EXPECT_EQ(exits_to_walk, 0);
-	EXPECT_EQ(exits_to_run, 0);
+	EXPECT_EQ(enters, 1u);
+	EXPECT_EQ(enters_from_walk, 1u);
+	EXPECT_EQ(enters_from_run, 0u);
+	EXPECT_EQ(updates, 1u);
+	EXPECT_EQ(exits, 1u);
+	EXPECT_EQ(exits_to_walk, 0u);
+	EXPECT_EQ(exits_to_run, 0u);
 
 	smachine.update();
 
-	EXPECT_EQ(enters, 2);
-	EXPECT_EQ(enters_from_walk, 1);
-	EXPECT_EQ(enters_from_run, 0);
-	EXPECT_EQ(updates, 2);
-	EXPECT_EQ(exits, 1);
-	EXPECT_EQ(exits_to_walk, 1);
-	EXPECT_EQ(exits_to_run, 0);
+	EXPECT_EQ(enters, 2u);
+	EXPECT_EQ(enters_from_walk, 1u);
+	EXPECT_EQ(enters_from_run, 0u);
+	EXPECT_EQ(updates, 2u);
+	EXPECT_EQ(exits, 1u);
+	EXPECT_EQ(exits_to_walk, 1u);
+	EXPECT_EQ(exits_to_run, 0u);
 
 	smachine.trigger<transition::do_run>();
 	smachine.update();
 
-	EXPECT_EQ(enters, 3);
-	EXPECT_EQ(enters_from_walk, 1);
-	EXPECT_EQ(enters_from_run, 0);
-	EXPECT_EQ(updates, 2);
-	EXPECT_EQ(exits, 2);
-	EXPECT_EQ(exits_to_walk, 1);
-	EXPECT_EQ(exits_to_run, 0);
+	EXPECT_EQ(enters, 3u);
+	EXPECT_EQ(enters_from_walk, 1u);
+	EXPECT_EQ(enters_from_run, 0u);
+	EXPECT_EQ(updates, 2u);
+	EXPECT_EQ(exits, 2u);
+	EXPECT_EQ(exits_to_walk, 1u);
+	EXPECT_EQ(exits_to_run, 0u);
 
 	smachine.update();
-	EXPECT_EQ(enters, 3);
-	EXPECT_EQ(enters_from_walk, 1);
-	EXPECT_EQ(enters_from_run, 0);
-	EXPECT_EQ(updates, 3);
-	EXPECT_EQ(exits, 2);
-	EXPECT_EQ(exits_to_walk, 1);
-	EXPECT_EQ(exits_to_run, 0);
+	EXPECT_EQ(enters, 3u);
+	EXPECT_EQ(enters_from_walk, 1u);
+	EXPECT_EQ(enters_from_run, 0u);
+	EXPECT_EQ(updates, 3u);
+	EXPECT_EQ(exits, 2u);
+	EXPECT_EQ(exits_to_walk, 1u);
+	EXPECT_EQ(exits_to_run, 0u);
 
 	smachine.trigger<transition::do_jump>();
 	smachine.update();
 
-	EXPECT_EQ(enters, 3);
-	EXPECT_EQ(enters_from_walk, 1);
-	EXPECT_EQ(enters_from_run, 1);
-	EXPECT_EQ(updates, 3);
-	EXPECT_EQ(exits, 3);
-	EXPECT_EQ(exits_to_walk, 1);
-	EXPECT_EQ(exits_to_run, 0);
+	EXPECT_EQ(enters, 3u);
+	EXPECT_EQ(enters_from_walk, 1u);
+	EXPECT_EQ(enters_from_run, 1u);
+	EXPECT_EQ(updates, 3u);
+	EXPECT_EQ(exits, 3u);
+	EXPECT_EQ(exits_to_walk, 1u);
+	EXPECT_EQ(exits_to_run, 0u);
 
 	smachine.update();
-	EXPECT_EQ(enters, 4);
-	EXPECT_EQ(enters_from_walk, 1);
-	EXPECT_EQ(enters_from_run, 1);
-	EXPECT_EQ(updates, 4);
-	EXPECT_EQ(exits, 3);
-	EXPECT_EQ(exits_to_walk, 1);
-	EXPECT_EQ(exits_to_run, 1);
+	EXPECT_EQ(enters, 4u);
+	EXPECT_EQ(enters_from_walk, 1u);
+	EXPECT_EQ(enters_from_run, 1u);
+	EXPECT_EQ(updates, 4u);
+	EXPECT_EQ(exits, 3u);
+	EXPECT_EQ(exits_to_walk, 1u);
+	EXPECT_EQ(exits_to_run, 1u);
 }
 
 TEST(hfsm, func_arguments) {
@@ -788,9 +788,9 @@ TEST(hfsm, func_arguments) {
 	smachine.update(test);
 
 	EXPECT_EQ(test, 2);
-	EXPECT_EQ(enters, 1);
-	EXPECT_EQ(updates, 1);
-	EXPECT_EQ(exits, 0);
+	EXPECT_EQ(enters, 1u);
+	EXPECT_EQ(updates, 1u);
+	EXPECT_EQ(exits, 0u);
 
 	smachine.trigger<transition::do_run>(test);
 	EXPECT_EQ(test, 2);
@@ -798,8 +798,8 @@ TEST(hfsm, func_arguments) {
 	smachine.update(test);
 
 	EXPECT_EQ(test, 4);
-	EXPECT_EQ(enters, 2);
-	EXPECT_EQ(updates, 1);
-	EXPECT_EQ(exits, 1);
+	EXPECT_EQ(enters, 2u);
+	EXPECT_EQ(updates, 1u);
+	EXPECT_EQ(exits, 1u);
 }
 } // namespace

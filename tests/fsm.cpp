@@ -4,7 +4,7 @@
 
 namespace {
 
-TEST(simple_fsm, example) {
+TEST(fsm, example) {
 	struct test_data {
 		bool walk_enter = false;
 		bool walk_update = false;
@@ -162,7 +162,7 @@ TEST(simple_fsm, example) {
 	EXPECT_EQ(mtest_data.num_onexitto_calls, 2u);
 }
 
-TEST(simpl_fsm, basics) {
+TEST(fsm, basics) {
 	enum class state {
 		walk,
 		run,
@@ -240,12 +240,12 @@ TEST(simpl_fsm, basics) {
 	machine.update(inpute);
 
 	EXPECT_TRUE(inpute);
-	EXPECT_EQ(on_enters, 4);
-	EXPECT_EQ(on_updates, 3);
-	EXPECT_EQ(on_exits, 3);
+	EXPECT_EQ(on_enters, 4u);
+	EXPECT_EQ(on_updates, 3u);
+	EXPECT_EQ(on_exits, 3u);
 }
 
-TEST(simple_fsm, event_triggering) {
+TEST(fsm, event_triggering) {
 	struct test_data {
 		size_t num_onenterfrom_calls = 0;
 		size_t num_onenter_calls = 0;

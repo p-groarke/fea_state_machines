@@ -1,6 +1,6 @@
 # fea_state_machines
-<!-- [![Build Status](https://travis-ci.org/p-groarke/fea_flat_recurse.svg?branch=master)](https://travis-ci.org/p-groarke/fea_flat_recurse)
-[![Build status](https://ci.appveyor.com/api/projects/status/kw99c4io4f50n6en/branch/master?svg=true)](https://ci.appveyor.com/project/p-groarke/fea-flat-recurse/branch/master) -->
+[![Build status](https://ci.appveyor.com/api/projects/status/vf630kekui0oanfn/branch/master?svg=true)](https://ci.appveyor.com/project/p-groarke/fea-state-machines/branch/master)
+[![Build Status](https://travis-ci.org/p-groarke/fea_state_machines.svg?branch=master)](https://travis-ci.org/p-groarke/fea_state_machines)
 
 A buffet of state machines.
 

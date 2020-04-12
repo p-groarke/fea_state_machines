@@ -88,7 +88,7 @@ TODO :
 #define fea_event(name, f) \
 	struct FEA_TOKENPASTE2( \
 			FEA_TOKENPASTE2(fea_event_builder_, name), __LINE__) { \
-		using is_event_builder = int; \
+		using is_event_builder [[maybe_unused]] = int; \
 		static constexpr auto unpack() { \
 			return f; \
 		} \
@@ -329,7 +329,8 @@ struct fsm_state {
 			// after all this.
 			constexpr bool has_enter_from
 					= _events.template contains<enter_from_key_t>();
-			constexpr bool has_enter = _events.template contains<enter_key_t>();
+			[[maybe_unused]] constexpr bool has_enter
+					= _events.template contains<enter_key_t>();
 
 			if constexpr (FromToState != StateEnum::count && has_enter_from) {
 				// Invoke with machine as last argument to support calling
@@ -369,7 +370,8 @@ struct fsm_state {
 
 			constexpr bool has_exit_to
 					= _events.template contains<exit_to_key_t>();
-			constexpr bool has_exit = _events.template contains<exit_key_t>();
+			[[maybe_unused]] constexpr bool has_exit
+					= _events.template contains<exit_key_t>();
 
 			if constexpr (FromToState != StateEnum::count && has_exit_to) {
 				constexpr auto& f = _events.template find<exit_to_key_t>();

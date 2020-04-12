@@ -39,6 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 // TODO :
 // - sanity check
@@ -326,7 +327,8 @@ struct hfsm_state {
 				"state : invalid transition");
 
 		if (_current_substate != StateEnum::count) {
-			current_substate().transition<Transition>(tg, func_args...);
+			current_substate().template transition<Transition>(
+					tg, func_args...);
 		}
 
 		assert(!(tg.yield && tg.internal_transition)
@@ -725,7 +727,7 @@ struct hfsm {
 		maybe_init(func_args...);
 
 		_current_tranny_info = {};
-		current_state().transition<Transition>(
+		current_state().template transition<Transition>(
 				_current_tranny_info, func_args...);
 
 		if (_current_tranny_info.to == StateEnum::count
@@ -761,7 +763,7 @@ struct hfsm {
 			// auto subg = sg::make_scope_guard(
 			//		[&]() { sub._in_transition_guard = false; });
 
-			sub.trigger<Transition>(func_args...);
+			sub.template trigger<Transition>(func_args...);
 		}
 	}
 
@@ -836,14 +838,13 @@ private:
 		for (state_t* s : states) {
 			bool call_generalized = s->enter_from_calls_on_enter(to_from_state);
 			if (call_generalized) {
-				events.push_back(
-						[s, to_from_state, this](hfsm&, FuncArgs... func_args) {
-							_indentation += indentation_size;
-							maybe_print(hfsm_event::on_enter, s);
+				events.push_back([s, this](hfsm&, FuncArgs... func_args) {
+					_indentation += indentation_size;
+					maybe_print(hfsm_event::on_enter, s);
 
-							s->execute_event<hfsm_event::on_enter>(
-									StateEnum::count, *this, func_args...);
-						});
+					s->template execute_event<hfsm_event::on_enter>(
+							StateEnum::count, *this, func_args...);
+				});
 			}
 
 			events.push_back([s, to_from_state, indent = !call_generalized,
@@ -852,7 +853,7 @@ private:
 					_indentation += indentation_size;
 				}
 				maybe_print(hfsm_event::on_enter, s, to_from_state);
-				s->execute_event<hfsm_event::on_enter>(
+				s->template execute_event<hfsm_event::on_enter>(
 						to_from_state, *this, func_args...);
 			});
 		}
@@ -870,7 +871,7 @@ private:
 				}
 
 				maybe_print(hfsm_event::on_update, s);
-				s->execute_event<hfsm_event::on_update>(
+				s->template execute_event<hfsm_event::on_update>(
 						StateEnum::count, *this, func_args...);
 			});
 		}
@@ -882,26 +883,25 @@ private:
 		for (state_t* s : states) {
 			bool call_generalized = s->exit_to_calls_on_exit(to_from_state);
 			if (call_generalized) {
-				events.push_back(
-						[s, to_from_state, this](hfsm&, FuncArgs... func_args) {
-							maybe_print(hfsm_event::on_exit, s);
+				events.push_back([s, this](hfsm&, FuncArgs... func_args) {
+					maybe_print(hfsm_event::on_exit, s);
 
-							s->execute_event<hfsm_event::on_exit>(
-									StateEnum::count, *this, func_args...);
-						});
+					s->template execute_event<hfsm_event::on_exit>(
+							StateEnum::count, *this, func_args...);
+				});
 			}
 
-			events.push_back([s, to_from_state, indent = !call_generalized,
-									 this](hfsm&, FuncArgs... func_args) {
-				maybe_print(hfsm_event::on_exit, s, to_from_state);
+			events.push_back(
+					[s, to_from_state, this](hfsm&, FuncArgs... func_args) {
+						maybe_print(hfsm_event::on_exit, s, to_from_state);
 
-				s->execute_event<hfsm_event::on_exit>(
-						to_from_state, *this, func_args...);
+						s->template execute_event<hfsm_event::on_exit>(
+								to_from_state, *this, func_args...);
 
-				if (_transition_to_handle == TransitionEnum::count) {
-					_indentation -= indentation_size;
-				}
-			});
+						if (_transition_to_handle == TransitionEnum::count) {
+							_indentation -= indentation_size;
+						}
+					});
 		}
 	}
 
@@ -950,7 +950,7 @@ private:
 				state_t* child = parent->substate(_current_tranny_info.to);
 
 				update_events.push_back(
-						[parent, to_state = _current_tranny_info.to, this](
+						[parent, to_state = _current_tranny_info.to](
 								hfsm&, FuncArgs...) {
 							parent->current_substate(to_state);
 						});
@@ -1053,7 +1053,7 @@ private:
 		const char* ev_name = nullptr;
 
 		if (ev == hfsm_event::on_update) {
-			if (!from->handles_event<hfsm_event::on_update>())
+			if (!from->template handles_event<hfsm_event::on_update>())
 				return;
 
 			ev_name = "on_update";
@@ -1061,21 +1061,21 @@ private:
 					ev_name);
 		} else if (ev == hfsm_event::on_enter
 				|| ev == hfsm_event::on_enter_from) {
-			if (from->handles_event<hfsm_event::on_enter_from>(to)) {
+			if (from->template handles_event<hfsm_event::on_enter_from>(to)) {
 				ev_name = "on_enter_from";
 				printf("%*s%s : %s : %s\n", _indentation, "",
 						from->name().data(), ev_name, state_name(to).data());
-			} else if (from->handles_event<hfsm_event::on_enter>()) {
+			} else if (from->template handles_event<hfsm_event::on_enter>()) {
 				ev_name = "on_enter";
 				printf("%*s%s : %s\n", _indentation, "", from->name().data(),
 						ev_name);
 			}
 		} else if (ev == hfsm_event::on_exit || ev == hfsm_event::on_exit_to) {
-			if (from->handles_event<hfsm_event::on_exit_to>(to)) {
+			if (from->template handles_event<hfsm_event::on_exit_to>(to)) {
 				ev_name = "on_exit_to";
 				printf("%*s%s : %s : %s\n", _indentation, "",
 						from->name().data(), ev_name, state_name(to).data());
-			} else if (from->handles_event<hfsm_event::on_exit>()) {
+			} else if (from->template handles_event<hfsm_event::on_exit>()) {
 				ev_name = "on_exit";
 				printf("%*s%s : %s\n", _indentation, "", from->name().data(),
 						ev_name);
@@ -1127,7 +1127,6 @@ private:
 	bool _in_transition_guard{ false };
 
 	std::vector<hfsm> _parallel_machines;
-
-}; // namespace fea
+};
 
 } // namespace fea
