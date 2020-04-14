@@ -30,6 +30,8 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #pragma once
+#include "tmp.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -83,187 +85,9 @@ TODO :
 	- Yield transitions (aka history state).
 */
 
-#define FEA_TOKENPASTE(x, y) x##y
-#define FEA_TOKENPASTE2(x, y) FEA_TOKENPASTE(x, y)
-#define fea_event(name, f) \
-	struct FEA_TOKENPASTE2( \
-			FEA_TOKENPASTE2(fea_event_builder_, name), __LINE__) { \
-		using is_event_builder [[maybe_unused]] = int; \
-		static constexpr auto unpack() { \
-			return f; \
-		} \
-	} name
-
 
 namespace fea {
 namespace cexpr {
-namespace detail {
-template <class T>
-struct event_ {
-	using type = void;
-};
-
-template <class, class = void>
-struct is_event_builder : public std::false_type {};
-
-template <class T>
-struct is_event_builder<T, typename event_<typename T::is_event_builder>::type>
-		: public std::true_type {};
-
-
-template <class T, class Tuple>
-struct tuple_idx {
-	static_assert(!std::is_same_v<Tuple, std::tuple<>>,
-			"could not find T in given Tuple");
-
-	// static constexpr size_t value = std::numeric_limits<size_t>::max();
-};
-template <class T, class... Types>
-struct tuple_idx<T, std::tuple<T, Types...>> {
-	static constexpr size_t value = 0;
-};
-template <class T, class U, class... Types>
-struct tuple_idx<T, std::tuple<U, Types...>> {
-	static constexpr size_t value
-			= 1 + tuple_idx<T, std::tuple<Types...>>::value;
-};
-
-template <class T, class Tuple>
-inline constexpr size_t tuple_idx_v = tuple_idx<T, Tuple>::value;
-
-
-template <class T, class Tuple>
-struct tuple_contains;
-template <class T>
-struct tuple_contains<T, std::tuple<>> : std::false_type {};
-template <class T, class U, class... Ts>
-struct tuple_contains<T, std::tuple<U, Ts...>>
-		: tuple_contains<T, std::tuple<Ts...>> {};
-template <class T, class... Ts>
-struct tuple_contains<T, std::tuple<T, Ts...>> : std::true_type {};
-
-template <class T, class Tuple>
-inline constexpr bool tuple_contains_v = tuple_contains<T, Tuple>::value;
-
-
-template <class Func, size_t... I>
-constexpr auto tuple_expander5000_impl(Func func, std::index_sequence<I...>) {
-	return func(std::integral_constant<size_t, I>{}...);
-}
-template <size_t N, class Func>
-constexpr auto tuple_expander5000(Func func) {
-	return tuple_expander5000_impl(func, std::make_index_sequence<N>());
-}
-
-
-template <class Func, class Tuple, size_t N = 0>
-inline auto runtime_get(Func func, Tuple& tup, size_t idx) {
-	if (N == idx) {
-		return func(std::get<N>(tup));
-	}
-
-	if constexpr (N + 1 < std::tuple_size_v<Tuple>) {
-		return runtime_get<Func, Tuple, N + 1>(func, tup, idx);
-	}
-}
-
-
-template <class Func, size_t... I>
-constexpr auto static_for(Func func, std::index_sequence<I...>) {
-	return (func(std::integral_constant<size_t, I>{}), ...);
-}
-
-template <size_t N, class Func>
-constexpr void static_for(Func func) {
-	return static_for(func, std::make_index_sequence<N>());
-}
-
-
-// Pass in your tuple_map_key type.
-// Build with multiple tuple<tuple_map_key<Key>, T>...
-template <class KeysBuilder, class ValuesBuilder>
-struct tuple_map {
-	// Search by non-type template.
-	template <class Key>
-	static constexpr const auto& find() {
-		constexpr size_t idx = tuple_idx_v<Key, keys_tup_t>;
-		return std::get<idx>(_values);
-	}
-	// template <class Key>
-	// static constexpr auto& find() {
-	//	constexpr size_t idx = tuple_idx_v<Key, KeysTuple>;
-	//	return std::get<idx>(_values);
-	//}
-
-	template <class Key>
-	static constexpr bool contains() {
-		// Just to make sure we are in constexpr land.
-		constexpr bool ret = tuple_contains_v<Key, keys_tup_t>;
-		return ret;
-	}
-
-private:
-	// tuple<tuple_map_key<my, type, keys>>
-	// Used to find the index of the value inside the other tuple.
-	static constexpr auto _keys = KeysBuilder::unpack();
-
-	// tuple<T>
-	// Your values.
-	static constexpr auto _values = ValuesBuilder::unpack();
-
-	using keys_tup_t = std::decay_t<decltype(_keys)>;
-	using values_tup_t = std::decay_t<decltype(_values)>;
-};
-
-template <class Builder>
-constexpr auto make_tuple_map() {
-	// At compile time, take the tuple of tuple coming from the
-	// builder, iterate through it, grab the first elements of
-	// nested tuples (the key) and put that in a new tuple, grab
-	// the second elements and put that in another tuple.
-
-	// Basically, go from tuple<tuple<key, value>...> to
-	// tuple<tuple<key...>, tuple<values...>>
-	// which is our map basically.
-
-	struct keys_tup {
-		static constexpr auto unpack() {
-			constexpr size_t tup_size
-					= std::tuple_size_v<decltype(Builder::unpack())>;
-
-			return detail::tuple_expander5000<tup_size>([](
-					auto... Idxes) constexpr {
-				constexpr auto tup_of_tups = Builder::unpack();
-
-				// Gets all the keys.
-				return std::make_tuple(std::get<0>(
-						std::get<decltype(Idxes)::value>(tup_of_tups))...);
-			});
-		}
-	};
-
-	struct vals_tup {
-		static constexpr auto unpack() {
-			constexpr size_t tup_size
-					= std::tuple_size_v<decltype(Builder::unpack())>;
-
-			return detail::tuple_expander5000<tup_size>([](
-					auto... Idxes) constexpr {
-				constexpr auto tup_of_tups = Builder::unpack();
-
-				// Gets all the values.
-				return std::make_tuple(std::get<1>(
-						std::get<decltype(Idxes)::value>(tup_of_tups))...);
-			});
-		}
-	};
-
-	return tuple_map<keys_tup, vals_tup>{};
-}
-
-} // namespace detail
-
-
 enum class fsm_event : uint8_t {
 	on_enter_from,
 	on_enter,
@@ -644,13 +468,13 @@ struct fsm_builder {
 	static constexpr auto make_state(TransitionBuilder, EventBuilder) {
 		struct t_map {
 			static constexpr auto unpack() {
-				return detail::make_tuple_map<TransitionBuilder>();
+				return detail::make_constexpr_tuple_map<TransitionBuilder>();
 			}
 		};
 
 		struct e_map {
 			static constexpr auto unpack() {
-				return detail::make_tuple_map<EventBuilder>();
+				return detail::make_constexpr_tuple_map<EventBuilder>();
 			}
 		};
 
@@ -674,7 +498,7 @@ struct fsm_builder {
 			};
 
 			static constexpr auto unpack() {
-				return detail::make_tuple_map<StateBuilder>();
+				return detail::make_constexpr_tuple_map<StateBuilder>();
 			}
 		};
 
