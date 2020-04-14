@@ -283,7 +283,19 @@ constexpr auto make_semi_constexpr_tuple_map(const BuilderTuple& builder_tup) {
 
 
 template <class Func>
-void to_constexpr_of_doom(Func func, size_t i) {
+auto to_constexpr_of_doom(Func func, size_t i) {
+	using ret_t = decltype(func(std::integral_constant<size_t, 0>{}));
+
+	// TODO : benchmark with if constexpr (generates o(n) assembly?)
+	//#define FEA_CASE(n) \
+//	case (n): { \
+//		if constexpr (n < MaxN) { \
+//			std::integral_constant<size_t, n> v; \
+//			return func(v); \
+//		} \
+//	} \
+//		[[fallthrough]]
+
 	switch (i) {
 #define FEA_CASE(n) \
 	case (n): { \
@@ -1299,6 +1311,8 @@ void to_constexpr_of_doom(Func func, size_t i) {
 	default: {
 	} break;
 	}
+
+	return ret_t();
 }
 
 } // namespace detail
