@@ -350,10 +350,6 @@ struct fsm<TransitionEnum, StateEnum, FuncRet(FuncArgs...)> {
 				= from_state.template transition_target<Transition>();
 		state_t& to_state = get_state(to_state_e);
 
-		// StateEnum from_state = _current_state;
-		// StateEnum to_state = _states[size_t(_current_state)]
-		//							 .template transition_target<Transition>();
-
 		// Only execute on_exit if we aren't in a trigger from on_exit.
 		if (!_in_on_exit) {
 			_in_on_exit = true;
