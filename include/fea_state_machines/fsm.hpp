@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 #include <algorithm>
 #include <array>
+#include <bitset>
 #include <cassert>
 #include <cstdint>
 #include <functional>
@@ -282,6 +283,7 @@ struct fsm<TransitionEnum, StateEnum, FuncRet(FuncArgs...)> {
 		static_assert(State != StateEnum::count, "fsm : bad state");
 
 		std::get<size_t(State)>(_states) = std::move(state);
+		_state_valid[size_t(State)] = true;
 
 		if (_default_state == StateEnum::count) {
 			_default_state = State;
@@ -307,6 +309,10 @@ struct fsm<TransitionEnum, StateEnum, FuncRet(FuncArgs...)> {
 			return _finish_state == _current_state;
 		}
 		return false;
+	}
+
+	void reset() {
+		_current_state = StateEnum::count;
 	}
 
 	// TODO : Fix retrigger on_exit.
@@ -337,18 +343,24 @@ struct fsm<TransitionEnum, StateEnum, FuncRet(FuncArgs...)> {
 
 		maybe_init(func_args...);
 
-		StateEnum from_state = _current_state;
-		StateEnum to_state = _states[size_t(_current_state)]
-									 .template transition_target<Transition>();
+		StateEnum from_state_e = _current_state;
+		state_t& from_state = get_state(_current_state);
+
+		StateEnum to_state_e
+				= from_state.template transition_target<Transition>();
+		state_t& to_state = get_state(to_state_e);
+
+		// StateEnum from_state = _current_state;
+		// StateEnum to_state = _states[size_t(_current_state)]
+		//							 .template transition_target<Transition>();
 
 		// Only execute on_exit if we aren't in a trigger from on_exit.
 		if (!_in_on_exit) {
 			_in_on_exit = true;
 
 			// Can recursively call trigger. We must handle that.
-			_states[size_t(from_state)]
-					.template execute_event<fsm_event::on_exit>(
-							to_state, Transition, *this, func_args...);
+			from_state.template execute_event<fsm_event::on_exit>(
+					to_state_e, Transition, *this, func_args...);
 
 			if (_in_on_exit == false) {
 				// Exit has triggered transition. Abort.
@@ -357,11 +369,11 @@ struct fsm<TransitionEnum, StateEnum, FuncRet(FuncArgs...)> {
 		}
 		_in_on_exit = false;
 
-		_current_state = to_state;
+		_current_state = to_state_e;
 
 		// Always execute on_enter.
-		_states[size_t(to_state)].template execute_event<fsm_event::on_enter>(
-				from_state, Transition, *this, func_args...);
+		to_state.template execute_event<fsm_event::on_enter>(
+				from_state_e, Transition, *this, func_args...);
 	}
 
 	// Update the fsm.
@@ -374,7 +386,7 @@ struct fsm<TransitionEnum, StateEnum, FuncRet(FuncArgs...)> {
 
 		maybe_init(func_args...);
 
-		return _states[size_t(_current_state)]
+		return get_state(_current_state)
 				.template execute_event<fsm_event::on_update>(StateEnum::count,
 						TransitionEnum::count, *this, func_args...);
 	}
@@ -400,7 +412,22 @@ private:
 						TransitionEnum::count, *this, func_args...);
 	}
 
+	const state_t& get_state(StateEnum s) const {
+		assert(s != StateEnum::count);
+		if (!_state_valid[size_t(s)]) {
+			throw std::runtime_error{
+				"fsm : Accessing invalid state, did you forget to add a state?"
+			};
+		}
+		return _states[size_t(s)];
+	}
+	state_t& get_state(StateEnum s) {
+		return const_cast<state_t&>(
+				static_cast<const fsm*>(this)->get_state(s));
+	}
+
 	std::array<state_t, size_t(StateEnum::count)> _states;
+	std::bitset<size_t(StateEnum::count)> _state_valid;
 	StateEnum _current_state = StateEnum::count;
 	StateEnum _default_state = StateEnum::count;
 	StateEnum _finish_state = StateEnum::count;
