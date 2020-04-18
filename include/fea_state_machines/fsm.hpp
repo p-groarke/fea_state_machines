@@ -306,6 +306,7 @@ struct fsm<TransitionEnum, StateEnum, FuncRet(FuncArgs...)> {
 		if (_finish_state != StateEnum::count) {
 			return _finish_state == _current_state;
 		}
+		return false;
 	}
 
 	// TODO : Fix retrigger on_exit.
