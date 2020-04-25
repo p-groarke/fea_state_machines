@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 #include <algorithm>
 #include <array>
+#include <bitset>
 #include <cassert>
 #include <cstdint>
 #include <functional>
@@ -44,10 +45,11 @@ A small, fast and simple stack based fsm.
 Features :
 	- OnEnter, OnUpdate, OnExit.
 	- OnEnterFrom, OnExitTo.
-		Overrides event behavior when coming from/going to specified states.
+		Overrides event behavior when coming from/going to specified states or
+		transitions.
 	- Supports user arguments in the callbacks (explained below).
-	- DelayedTrigger.
-		Trigger will happen next time you call fsm::update.
+	//- DelayedTrigger. // Removed till bug fix
+	//	Trigger will happen next time you call fsm::update.
 	- Define FEA_FSM_NOTHROW to assert instead of throw.
 	- Does NOT provide a "get_current_state" function.
 		Checking the current state of an fsm is a major smell and usually points
@@ -55,17 +57,25 @@ Features :
 		fsm. Do not do that, rethink your states and transitions instead.
 
 Callbacks :
-	- The first argument of your callback is always a ref to the fsm itself.
+	- The last argument of your callback is always a ref to the fsm itself.
 		This is useful for retriggering and when you store fsms in containers.
 		You can use auto& to simplify your callback signature.
-		[](auto& mymachine){}
+		[](your_args..., auto& mymachine){}
 
-	- Pass your own types at the end of the fsm and fsm_state template.
+	- Pass your event signature at the end of the fsm and fsm_state template.
 		These will be passed on to your callbacks when you call update or
 		trigger.
-		For example : fsm<mytransitions, mystates, int, bool&, const void*>;
+		For example :
+			fsm<myts, mystates, void(int, bool&, const void*)>;
 		Callback signature is:
-			[](auto& machine, int, bool&, const void*){}
+			[](int, bool&, const void*, auto& machine){}
+	- The state machine is passed at the end to allow you to call member
+		functions directly.
+		For example :
+			fsm<my_tses, my_states, bool(my_obj*, int)>
+		Call your triggers passing the object pointer as the first argument, and
+		the member functions will be called.
+			machine.trigger<some::transition>(&obj, 42);
 
 
 Notes :
@@ -92,31 +102,67 @@ enum class fsm_event : uint8_t {
 	count,
 };
 
-template <class, class, class...>
+template <class, class, class>
 struct fsm;
 
-template <class TransitionEnum, class StateEnum, class... FuncArgs>
-struct fsm_state {
-	using fsm_t = fsm<TransitionEnum, StateEnum, FuncArgs...>;
-	using fsm_func_t = std::function<void(fsm_t&, FuncArgs...)>;
+template <class, class, class>
+struct fsm_state;
+
+template <class TransitionEnum, class StateEnum, class FuncRet,
+		class... FuncArgs>
+struct fsm_state<TransitionEnum, StateEnum, FuncRet(FuncArgs...)> {
+	using fsm_t = fsm<TransitionEnum, StateEnum, FuncRet(FuncArgs...)>;
+	using fsm_func_t = std::function<FuncRet(FuncArgs..., fsm_t&)>;
 
 	fsm_state() {
 		std::fill(_transitions.begin(), _transitions.end(), StateEnum::count);
 	}
 
 	// Add your event implementation.
-	template <fsm_event Event, StateEnum State = StateEnum::count>
+	template <fsm_event Event>
 	void add_event(fsm_func_t&& func) {
-		if constexpr (Event == fsm_event::on_enter_from) {
-			std::get<size_t(State)>(_on_enter_from_funcs) = std::move(func);
-		} else if constexpr (Event == fsm_event::on_exit_to) {
-			std::get<size_t(State)>(_on_exit_to_funcs) = std::move(func);
-		} else if constexpr (Event == fsm_event::on_enter) {
+		static_assert(Event == fsm_event::on_enter
+						|| Event == fsm_event::on_exit
+						|| Event == fsm_event::on_update,
+				"add_event : wrong template resolution called");
+
+		if constexpr (Event == fsm_event::on_enter) {
 			_on_enter_func = std::move(func);
 		} else if constexpr (Event == fsm_event::on_update) {
 			_on_update_func = std::move(func);
 		} else if constexpr (Event == fsm_event::on_exit) {
 			_on_exit_func = std::move(func);
+		}
+	}
+
+	template <fsm_event Event, StateEnum State>
+	void add_event(fsm_func_t&& func) {
+		static_assert(Event == fsm_event::on_enter_from
+						|| Event == fsm_event::on_exit_to,
+				"add_event : must use on_enter_from or on_exit_to when "
+				"custumizing on transition");
+
+		if constexpr (Event == fsm_event::on_enter_from) {
+			std::get<size_t(State)>(_on_enter_from_state_funcs)
+					= std::move(func);
+		} else if constexpr (Event == fsm_event::on_exit_to) {
+			std::get<size_t(State)>(_on_exit_to_state_funcs) = std::move(func);
+		}
+	}
+
+	template <fsm_event Event, TransitionEnum Transition>
+	void add_event(fsm_func_t&& func) {
+		static_assert(Event == fsm_event::on_enter_from
+						|| Event == fsm_event::on_exit_to,
+				"add_event : must use on_enter_from or on_exit_to when "
+				"custumizing on transition");
+
+		if constexpr (Event == fsm_event::on_enter_from) {
+			std::get<size_t(Transition)>(_on_enter_from_transition_funcs)
+					= std::move(func);
+		} else if constexpr (Event == fsm_event::on_exit_to) {
+			std::get<size_t(Transition)>(_on_exit_to_transition_funcs)
+					= std::move(func);
 		}
 	}
 
@@ -133,9 +179,10 @@ struct fsm_state {
 	// transition.
 	template <TransitionEnum Transition>
 	StateEnum transition_target() const {
-#if defined(FEA_FSM_NOTHROW)
-		assert(std::get<size_t(Transition)>(_transitions) == StateEnum::count);
-#else
+		assert(std::get<size_t(Transition)>(_transitions) != StateEnum::count
+				&& "fsm_state : unhandled transition");
+
+#if !defined(FEA_FSM_NOTHROW)
 		if (std::get<size_t(Transition)>(_transitions) == StateEnum::count) {
 			throw std::invalid_argument{ "fsm_state : unhandled transition" };
 		}
@@ -146,7 +193,8 @@ struct fsm_state {
 
 	// Used internally, executes a specific event.
 	template <fsm_event Event>
-	void execute_event([[maybe_unused]] StateEnum to_from_state, fsm_t& machine,
+	auto execute_event([[maybe_unused]] StateEnum to_from_state,
+			[[maybe_unused]] TransitionEnum to_from_transition, fsm_t& machine,
 			FuncArgs... func_args) {
 		static_assert(Event != fsm_event::on_enter_from,
 				"state : do not execute on_enter_from, use on_enter instead "
@@ -161,28 +209,44 @@ struct fsm_state {
 		// Check the event, call the appropriate user functions if it is stored.
 		if constexpr (Event == fsm_event::on_enter) {
 			if (to_from_state != StateEnum::count
-					&& _on_enter_from_funcs[size_t(to_from_state)]) {
-				// has enter_from
-				std::invoke(_on_enter_from_funcs[size_t(to_from_state)],
-						machine, func_args...);
+					&& _on_enter_from_state_funcs[size_t(to_from_state)]) {
+				// has enter_from state
+				std::invoke(_on_enter_from_state_funcs[size_t(to_from_state)],
+						func_args..., machine);
+
+			} else if (to_from_transition != TransitionEnum::count
+					&& _on_enter_from_transition_funcs[size_t(
+							to_from_transition)]) {
+				// has enter_from transition
+				std::invoke(_on_enter_from_transition_funcs[size_t(
+									to_from_transition)],
+						func_args..., machine);
 
 			} else if (_on_enter_func) {
-				std::invoke(_on_enter_func, machine, func_args...);
+				std::invoke(_on_enter_func, func_args..., machine);
 			}
 
 		} else if constexpr (Event == fsm_event::on_update) {
 			if (_on_update_func) {
-				std::invoke(_on_update_func, machine, func_args...);
+				return std::invoke(_on_update_func, func_args..., machine);
 			}
 		} else if constexpr (Event == fsm_event::on_exit) {
 			if (to_from_state != StateEnum::count
-					&& _on_exit_to_funcs[size_t(to_from_state)]) {
+					&& _on_exit_to_state_funcs[size_t(to_from_state)]) {
 				// has exit_to
-				std::invoke(_on_exit_to_funcs[size_t(to_from_state)], machine,
-						func_args...);
+				std::invoke(_on_exit_to_state_funcs[size_t(to_from_state)],
+						func_args..., machine);
+
+			} else if (to_from_transition != TransitionEnum::count
+					&& _on_exit_to_transition_funcs[size_t(
+							to_from_transition)]) {
+				// has exit_to
+				std::invoke(_on_exit_to_transition_funcs[size_t(
+									to_from_transition)],
+						func_args..., machine);
 
 			} else if (_on_exit_func) {
-				std::invoke(_on_exit_func, machine, func_args...);
+				std::invoke(_on_exit_func, func_args..., machine);
 			}
 		}
 	}
@@ -193,17 +257,22 @@ private:
 	fsm_func_t _on_update_func;
 	fsm_func_t _on_exit_func;
 
-	std::array<fsm_func_t, size_t(StateEnum::count)> _on_enter_from_funcs;
-	std::array<fsm_func_t, size_t(StateEnum::count)> _on_exit_to_funcs;
+	std::array<fsm_func_t, size_t(StateEnum::count)> _on_enter_from_state_funcs;
+	std::array<fsm_func_t, size_t(StateEnum::count)> _on_exit_to_state_funcs;
+
+	std::array<fsm_func_t, size_t(TransitionEnum::count)>
+			_on_enter_from_transition_funcs;
+	std::array<fsm_func_t, size_t(TransitionEnum::count)>
+			_on_exit_to_transition_funcs;
 
 	// TBD, makes it heavy but helps debuggability
 	// const char* _name;
 };
 
-template <class TransitionEnum, class StateEnum, class... FuncArgs>
-struct fsm {
-	// using fsm_t = fsm<TransitionEnum, StateEnum, FuncArgs...>;
-	using state_t = fsm_state<TransitionEnum, StateEnum, FuncArgs...>;
+template <class TransitionEnum, class StateEnum, class FuncRet,
+		class... FuncArgs>
+struct fsm<TransitionEnum, StateEnum, FuncRet(FuncArgs...)> {
+	using state_t = fsm_state<TransitionEnum, StateEnum, FuncRet(FuncArgs...)>;
 	using fsm_func_t = typename state_t::fsm_func_t;
 
 	// Here, we use move semantics not for performance (it doesn't do anything).
@@ -214,6 +283,7 @@ struct fsm {
 		static_assert(State != StateEnum::count, "fsm : bad state");
 
 		std::get<size_t(State)>(_states) = std::move(state);
+		_state_valid[size_t(State)] = true;
 
 		if (_default_state == StateEnum::count) {
 			_default_state = State;
@@ -223,26 +293,44 @@ struct fsm {
 	// Set starting state.
 	// By default, the first added state is used.
 	template <StateEnum State>
-	void set_default_state() {
+	void set_start_state() {
 		static_assert(State != StateEnum::count, "fsm : bad state");
 		_default_state = State;
 	}
 
-	// First come first served.
-	// Trigger will be called next update(...).
-	// Calling this prevents subsequent triggers to be executed.
-	// Allows more relaxed trigger argument requirements.
-	template <TransitionEnum Transition>
-	void delayed_trigger() {
-		if (_has_delayed_trigger)
-			return;
-
-		_has_delayed_trigger = true;
-		_delayed_trigger_func = [](fsm& f, FuncArgs... func_args) {
-			f._has_delayed_trigger = false;
-			f.trigger<Transition>(func_args...);
-		};
+	template <StateEnum State>
+	void set_finish_state() {
+		static_assert(State != StateEnum::count, "fsm : bad state");
+		_finish_state = State;
 	}
+
+	bool finished() const {
+		if (_finish_state != StateEnum::count) {
+			return _finish_state == _current_state;
+		}
+		return false;
+	}
+
+	void reset() {
+		_current_state = StateEnum::count;
+	}
+
+	// TODO : Fix retrigger on_exit.
+	//// First come first served.
+	//// Trigger will be called next update(...).
+	//// Calling this prevents subsequent triggers to be executed.
+	//// Allows more relaxed trigger argument requirements.
+	// template <TransitionEnum Transition>
+	// void delayed_trigger() {
+	//	if (_has_delayed_trigger)
+	//		return;
+
+	//	_has_delayed_trigger = true;
+	//	_delayed_trigger_func = [](fsm& f, FuncArgs... func_args) {
+	//		f._has_delayed_trigger = false;
+	//		f.trigger<Transition>(func_args...);
+	//	};
+	//}
 
 	// Trigger a transition.
 	// Throws on bad transition (or asserts, if you defined FEA_FSM_NOTHROW).
@@ -255,18 +343,20 @@ struct fsm {
 
 		maybe_init(func_args...);
 
-		StateEnum from_state = _current_state;
-		StateEnum to_state = _states[size_t(_current_state)]
-									 .template transition_target<Transition>();
+		StateEnum from_state_e = _current_state;
+		state_t& from_state = get_state(_current_state);
+
+		StateEnum to_state_e
+				= from_state.template transition_target<Transition>();
+		state_t& to_state = get_state(to_state_e);
 
 		// Only execute on_exit if we aren't in a trigger from on_exit.
 		if (!_in_on_exit) {
 			_in_on_exit = true;
 
 			// Can recursively call trigger. We must handle that.
-			_states[size_t(from_state)]
-					.template execute_event<fsm_event::on_exit>(
-							to_state, *this, func_args...);
+			from_state.template execute_event<fsm_event::on_exit>(
+					to_state_e, Transition, *this, func_args...);
 
 			if (_in_on_exit == false) {
 				// Exit has triggered transition. Abort.
@@ -275,26 +365,26 @@ struct fsm {
 		}
 		_in_on_exit = false;
 
-		_current_state = to_state;
+		_current_state = to_state_e;
 
 		// Always execute on_enter.
-		_states[size_t(to_state)].template execute_event<fsm_event::on_enter>(
-				from_state, *this, func_args...);
+		to_state.template execute_event<fsm_event::on_enter>(
+				from_state_e, Transition, *this, func_args...);
 	}
 
 	// Update the fsm.
 	// Calls on_update on the current state.
 	// Processes delay_trigger if that was called.
-	void update(FuncArgs... func_args) {
+	FuncRet update(FuncArgs... func_args) {
 		while (_has_delayed_trigger) {
-			std::invoke(_delayed_trigger_func, *this, func_args...);
+			std::invoke(_delayed_trigger_func, func_args..., *this);
 		}
 
 		maybe_init(func_args...);
 
-		_states[size_t(_current_state)]
-				.template execute_event<fsm_event::on_update>(
-						StateEnum::count, *this, func_args...);
+		return get_state(_current_state)
+				.template execute_event<fsm_event::on_update>(StateEnum::count,
+						TransitionEnum::count, *this, func_args...);
 	}
 
 	// Get the specified state.
@@ -314,13 +404,42 @@ private:
 
 		_current_state = _default_state;
 		_states[size_t(_current_state)]
-				.template execute_event<fsm_event::on_enter>(
-						StateEnum::count, *this, func_args...);
+				.template execute_event<fsm_event::on_enter>(StateEnum::count,
+						TransitionEnum::count, *this, func_args...);
+	}
+
+	const state_t& get_state(StateEnum s) const {
+		assert(s != StateEnum::count && "fsm : Accessing invalid state.");
+#if !defined(FEA_FSM_NOTHROW)
+		if (s == StateEnum::count) {
+			throw std::runtime_error{ "fsm : Accessing invalid state." };
+		}
+#endif
+
+		assert(_state_valid[size_t(s)]
+				&& "fsm : Accessing invalid state, did you forget to add a "
+				   "state?");
+
+#if !defined(FEA_FSM_NOTHROW)
+		if (!_state_valid[size_t(s)]) {
+			throw std::runtime_error{
+				"fsm : Accessing invalid state, did you forget to add a state?"
+			};
+		}
+#endif
+
+		return _states[size_t(s)];
+	}
+	state_t& get_state(StateEnum s) {
+		return const_cast<state_t&>(
+				static_cast<const fsm*>(this)->get_state(s));
 	}
 
 	std::array<state_t, size_t(StateEnum::count)> _states;
+	std::bitset<size_t(StateEnum::count)> _state_valid;
 	StateEnum _current_state = StateEnum::count;
 	StateEnum _default_state = StateEnum::count;
+	StateEnum _finish_state = StateEnum::count;
 
 	bool _in_on_exit = false;
 
@@ -328,4 +447,19 @@ private:
 	bool _has_delayed_trigger = false;
 };
 
+template <class, class, class>
+struct fsm_builder;
+
+template <class TransitionEnum, class StateEnum, class FuncRet,
+		class... FuncArgs>
+struct fsm_builder<TransitionEnum, StateEnum, FuncRet(FuncArgs...)> {
+	static constexpr auto make_state() {
+		return fsm_state<TransitionEnum, StateEnum, FuncRet(FuncArgs...)>{};
+	}
+
+	static constexpr fsm<TransitionEnum, StateEnum, FuncRet(FuncArgs...)>
+	make_machine() {
+		return fsm<TransitionEnum, StateEnum, FuncRet(FuncArgs...)>{};
+	}
+};
 } // namespace fea

@@ -1,10 +1,11 @@
-﻿#include <fea_state_machines/fsm.hpp>
+﻿#define FEA_FSM_NOTHROW
+#include <fea_state_machines/fsm.hpp>
 #include <gtest/gtest.h>
 
 
 namespace {
 
-TEST(fsm, example) {
+TEST(fsm_nothrow, example) {
 	struct test_data {
 		bool walk_enter = false;
 		bool walk_update = false;
@@ -104,9 +105,6 @@ TEST(fsm, example) {
 	// Currently doesn't handle walk to jump transition.
 #if !defined(NDEBUG)
 	EXPECT_DEATH(machine.trigger<transition::do_jump>(mtest_data), "");
-#else
-	EXPECT_THROW(machine.trigger<transition::do_jump>(mtest_data),
-			std::invalid_argument);
 #endif
 
 	// Go to jump.
@@ -167,7 +165,7 @@ TEST(fsm, example) {
 	EXPECT_EQ(mtest_data.num_onexitto_calls, 2u);
 }
 
-TEST(fsm, basics) {
+TEST(fsm_nothrow, basics) {
 	enum class state {
 		walk,
 		run,
@@ -250,7 +248,7 @@ TEST(fsm, basics) {
 	EXPECT_EQ(on_exits, 3u);
 }
 
-TEST(fsm, event_triggering) {
+TEST(fsm_nothrow, event_triggering) {
 	struct test_data {
 		size_t num_onenterfrom_calls = 0;
 		size_t num_onenter_calls = 0;
