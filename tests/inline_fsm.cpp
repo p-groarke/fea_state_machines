@@ -25,23 +25,6 @@ struct test_obj {
 };
 
 TEST(inline_fsm, example) {
-	//// Ou
-
-	//// Plus c++ standard p-e?
-
-	// fea::fsm_builder<transition, state> builder;
-	// auto t1 = builder.make_transition<transtion::do_run, state::run>();
-
-	// auto on_enter = builder.make_event<fea::fsm_event::on_enter_from,
-	// state::run>([](auto&, test_data& t) { ++t.num_onenter_calls; });
-
-	// auto on_update = builder.make_event<fea::fsm_event::on_update>(
-	//		[](auto&, test_data& t) { ++t.num_onupdate_calls; });
-
-	// auto walk_state
-	//		= fea::make_state(on_enter, t1, on_update);
-
-
 	// Create your state and transition enums. They MUST end with 'count'.
 	enum class state { walk, run, jump, count };
 	enum class transition { do_walk, do_run, do_jump, count };
