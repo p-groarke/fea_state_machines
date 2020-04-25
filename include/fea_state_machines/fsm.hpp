@@ -179,10 +179,10 @@ struct fsm_state<TransitionEnum, StateEnum, FuncRet(FuncArgs...)> {
 	// transition.
 	template <TransitionEnum Transition>
 	StateEnum transition_target() const {
-#if defined(FEA_FSM_NOTHROW)
 		assert(std::get<size_t(Transition)>(_transitions) != StateEnum::count
 				&& "fsm_state : unhandled transition");
-#else
+
+#if !defined(FEA_FSM_NOTHROW)
 		if (std::get<size_t(Transition)>(_transitions) == StateEnum::count) {
 			throw std::invalid_argument{ "fsm_state : unhandled transition" };
 		}
@@ -272,7 +272,6 @@ private:
 template <class TransitionEnum, class StateEnum, class FuncRet,
 		class... FuncArgs>
 struct fsm<TransitionEnum, StateEnum, FuncRet(FuncArgs...)> {
-	// using fsm_t = fsm<TransitionEnum, StateEnum, FuncArgs...>;
 	using state_t = fsm_state<TransitionEnum, StateEnum, FuncRet(FuncArgs...)>;
 	using fsm_func_t = typename state_t::fsm_func_t;
 
@@ -410,12 +409,25 @@ private:
 	}
 
 	const state_t& get_state(StateEnum s) const {
-		assert(s != StateEnum::count);
+		assert(s != StateEnum::count && "fsm : Accessing invalid state.");
+#if !defined(FEA_FSM_NOTHROW)
+		if (s == StateEnum::count) {
+			throw std::runtime_error{ "fsm : Accessing invalid state." };
+		}
+#endif
+
+		assert(_state_valid[size_t(s)]
+				&& "fsm : Accessing invalid state, did you forget to add a "
+				   "state?");
+
+#if !defined(FEA_FSM_NOTHROW)
 		if (!_state_valid[size_t(s)]) {
 			throw std::runtime_error{
 				"fsm : Accessing invalid state, did you forget to add a state?"
 			};
 		}
+#endif
+
 		return _states[size_t(s)];
 	}
 	state_t& get_state(StateEnum s) {
