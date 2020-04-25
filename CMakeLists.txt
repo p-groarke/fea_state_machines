@@ -1,7 +1,7 @@
 include(${CMAKE_CURRENT_SOURCE_DIR}/CMakeLists.conan.txt)
 
 cmake_minimum_required (VERSION 3.10)
-project(fea_state_machines VERSION 1.0.0 LANGUAGES CXX)
+project(fea_state_machines VERSION 1.1.0 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
