@@ -453,6 +453,10 @@ struct fsm_builder;
 template <class TransitionEnum, class StateEnum, class FuncRet,
 		class... FuncArgs>
 struct fsm_builder<TransitionEnum, StateEnum, FuncRet(FuncArgs...)> {
+
+	using fsm_t = fsm<TransitionEnum, StateEnum, FuncRet(FuncArgs...)>;
+	using state_t = fsm_state<TransitionEnum, StateEnum, FuncRet(FuncArgs...)>;
+
 	static constexpr auto make_state() {
 		return fsm_state<TransitionEnum, StateEnum, FuncRet(FuncArgs...)>{};
 	}
