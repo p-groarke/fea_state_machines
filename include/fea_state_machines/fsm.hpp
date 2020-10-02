@@ -36,6 +36,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cstdint>
 #include <functional>
 
+#if !defined(FEA_FSM_NOTHROW)
+#include <stdexcept>
+#endif
+
 namespace fea {
 /*
 A small, fast and simple stack based fsm.
