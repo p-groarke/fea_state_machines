@@ -1,6 +1,6 @@
 ﻿//#include "transitions_and_states.gen.hpp"
 
-#include <bench_util/bench_util.h>
+#include <fea_benchmark/fea_benchmark.hpp>
 #include <fea_state_machines/fsm.hpp>
 #include <fea_state_machines/hfsm.hpp>
 #include <fstream>
