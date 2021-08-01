@@ -1,3 +1,10 @@
+<br/>
+
+# This repository is inactive and kept for posterity's sake.
+# Any further development will happen in [fea_libs](https://github.com/p-groarke/fea_libs). Cheers.
+<br/>
+<br/>
+
 # fea_state_machines
 [![Build status](https://ci.appveyor.com/api/projects/status/vf630kekui0oanfn/branch/master?svg=true)](https://ci.appveyor.com/project/p-groarke/fea-state-machines/branch/master)
 [![Build Status](https://travis-ci.org/p-groarke/fea_state_machines.svg?branch=master)](https://travis-ci.org/p-groarke/fea_state_machines)
